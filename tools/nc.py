@@ -132,7 +132,7 @@ def export(args: argparse.Namespace) -> int:
     with log.open("w", encoding="utf-8") as handle:
         rc = subprocess.call([sys.executable, str(port / "tools" / "port_version_build.py"), "run", "--version", VERSION,
                               "--", "port_raw_export.py", "--out", str(port_game), "--openfl-engine",
-                              str(version_out / "bh-port-engine-openfl"), "--engine", str(ENGINE), "--no-build"],
+                              str(version_out / "bh-port-engine-openfl"), "--engine", str(ENGINE), "--no-build", "--convert"],
                              cwd=port, stdout=handle, stderr=subprocess.STDOUT)
     if rc != 0:
         print(log.read_text(encoding="utf-8")[-3000:])
@@ -227,6 +227,7 @@ def package(args: argparse.Namespace) -> int:
     from tools import game_files
     info = {"product": "official", "version": args.version, "game": VERSION,
             "game_files": game_files.fingerprint(port_root() / "versions" / VERSION),
+            "game_file_list": game_files.listing(port_root() / "versions" / VERSION),
             "port_commit": port_commit(), "built": time.strftime("%Y-%m-%d %H:%M:%S")}
     (out / "official.json").write_text(json.dumps(info, indent=1) + "\n", encoding="utf-8")
     bad = [p for p in out.rglob("*") if p.suffix.lower() in (".swf", ".swz", ".hl", ".as", ".asasm")]
