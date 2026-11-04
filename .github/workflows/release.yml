@@ -23,10 +23,10 @@ jobs:
     runs-on: [self-hosted, windows, brawlhalla]
     steps:
       - name: Build and publish Official
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
         env:
           GH_TOKEN: ${{ github.token }}
-          ENGINE: ${{ vars.BIFROST_ENGINE_DIR }}
+          ENGINE: ${{ vars.BIFROST_ENGINE_DIR || 'C:\Coding\bifrost-engine' }}
         run: |
           if (-not $env:ENGINE) { Write-Error "set the BIFROST_ENGINE_DIR variable (Settings > Secrets and variables > Actions > Variables) to the engine branch's folder on the runner's PC"; exit 1 }
           Set-Location $env:ENGINE
