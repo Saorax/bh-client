@@ -1,0 +1,5 @@
+/data/
+/build/
+/bifrost-gen/
+__pycache__/
+*.pyc
