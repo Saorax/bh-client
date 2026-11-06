@@ -8,9 +8,10 @@ class ServerStats {
             var parts = query.split(":");
             if (parts.length < 2 || parts[0] != "ranked") return null;
             var ladder = parts[1];
-            var user:UInt = parts.length > 2 ? Std.parseInt(parts[2]) : core.var_14871;
+            var watching = spectating();
+            var user:UInt = parts.length > 2 ? Std.parseInt(parts[2]) : watching ? lobbyLead(core) : core.var_14871;
             if (ladder == "team") return null;
-            if (ladder == "2v2" && parts.length == 2) {
+            if (ladder == "2v2" && parts.length == 2 && !watching) {
                 var team:Dynamic = teamCard(core);
                 if (team != null) return team;
             }
@@ -18,6 +19,17 @@ class ServerStats {
         } catch (_:Dynamic) {
             return null;
         }
+    }
+
+    public static function spectating():Bool {
+        var core:Dynamic = ScreenManager.owner;
+        return core != null && core.method_809();
+    }
+
+    static function lobbyLead(core:Dynamic):UInt {
+        var members:Dynamic = core.var_6336 != null ? core.var_6336.var_1780 : null;
+        if (members == null || port.runtime.As3.toInt(port.runtime.As3.getProp(members, "length")) < 1) return 0;
+        return port.runtime.As3.toUInt(port.runtime.As3.index(members, 0).var_14871);
     }
 
     public static function row(core:Dynamic, playlist:Dynamic, user:UInt):Dynamic {

@@ -90,6 +90,8 @@ PATCHES = [
      "         if(card.unknown == true)\n         {\n            return !incomplete;\n         }\n"
      "         var colW:Float = (w - 2 * pad) / 4;\n"),
     ("RatingExtras", "            teammateLine(g,c.teammate,cx,ry,right,sc);\n", ""),
+    ("RatingExtras", 'lobbyLegends = ladder == "1v1" ? legends(cs):null;',
+     'lobbyLegends = ladder == "1v1" && !ServerStats.spectating() ? legends(cs):null;'),
     ("RatingTags", 'rankLabel(port.runtime.As3.toUInt(b.stars)),"bottom":Std.string(b.rating),"colour":0xFFFFFF,',
      'rankLabel(port.runtime.As3.toUInt(b.stars)),"bottom":(b.team == true ? "TEAM " : "") + Std.string(b.rating),'
      '"gain":b.projectWin,"loss":b.projectLoss,"colour":0xFFFFFF,'),

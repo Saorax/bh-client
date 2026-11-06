@@ -56,14 +56,23 @@ class NcRanked {
                 Reflect.setField(RatingTags.before, Std.string(id), before);
                 Reflect.setField(RatingTags.cards, Std.string(id), card);
             }
+            var playing = Lambda.exists(players, p -> p.var_12279 == me);
             if (size == 1) {
+                var first:UInt = me;
                 var them:UInt = 0;
-                for (p in players) if (p.var_12279 != me) them = p.var_12279;
-                RatingTags.preview([[screen.mPlayerPreview1.var_4550, me], [screen.mPlayerPreview2.var_4550, them]]);
+                if (!playing && players.length > 1) {
+                    first = players[1].var_12279;
+                    them = players[0].var_12279;
+                } else {
+                    for (p in players) if (p.var_12279 != me) them = p.var_12279;
+                }
+                RatingTags.preview([[screen.mPlayerPreview1.var_4550, first], [screen.mPlayerPreview2.var_4550, them]]);
             } else {
-                var order:Array<UInt> = [me];
-                for (p in players) if (p.var_12279 != me && Std.int(p.team) == myTeam) order.push(p.var_12279);
-                for (p in players) if (Std.int(p.team) != myTeam) order.push(p.var_12279);
+                var lead:UInt = !playing && players.length > 0 ? players[0].var_12279 : me;
+                var leadTeam = !playing && players.length > 0 ? Std.int(players[0].team) : myTeam;
+                var order:Array<UInt> = [lead];
+                for (p in players) if (p.var_12279 != lead && Std.int(p.team) == leadTeam) order.push(p.var_12279);
+                for (p in players) if (Std.int(p.team) != leadTeam) order.push(p.var_12279);
                 var previews:Array<Dynamic> = [screen.mPlayerPreview1, screen.mPlayerPreview2, screen.mPlayerPreview3, screen.mPlayerPreview4];
                 RatingTags.preview([for (i in 0...Std.int(Math.min(order.length, 4))) [previews[i].var_4550, order[i]]]);
             }
