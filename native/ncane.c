@@ -200,6 +200,16 @@ typedef HANDLE (WINAPI *FindFirstFileExWFn)(LPCWSTR, FINDEX_INFO_LEVELS, LPVOID,
 static CreateFileWFn real_create_file = NULL;
 static GetModuleFileNameWFn real_module_name = NULL;
 static FindFirstFileExWFn real_find_first = NULL;
+static wchar_t spoof_exe_path[MAX_PATH] = {0};
+
+typedef LPWSTR  (WINAPI *GetCommandLineWFn)(void);
+typedef HMODULE (WINAPI *GetModuleHandleWFn)(LPCWSTR);
+typedef FARPROC (WINAPI *GetProcAddressFn)(HMODULE, LPCSTR);
+static GetCommandLineWFn  real_get_cmdline_w = NULL;
+static GetModuleHandleWFn real_get_module_handle_w = NULL;
+static GetProcAddressFn   real_get_proc_address = NULL;
+static wchar_t spoof_cmdline_w[MAX_PATH + 4] = {0};
+static char    spoof_cmdline_a[MAX_PATH + 4] = {0};
 
 static HANDLE WINAPI traced_create_file(LPCWSTR name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
                                         DWORD disposition, DWORD flags, HANDLE templ) {
@@ -213,6 +223,17 @@ static HANDLE WINAPI traced_create_file(LPCWSTR name, DWORD access, DWORD share,
 }
 
 static DWORD WINAPI traced_module_name(HMODULE module, LPWSTR out, DWORD size) {
+    if (module == NULL && spoof_exe_path[0] != 0 && size > 0) {
+        DWORD n = (DWORD)wcslen(spoof_exe_path);
+        if (n >= size) n = size - 1;
+        memcpy(out, spoof_exe_path, n * sizeof(wchar_t));
+        out[n] = 0;
+        if (ane_trace != NULL) {
+            fwprintf(ane_trace, L"GetModuleFileNameW %p -> %ls (spoofed)\n", (void *)module, out);
+            fflush(ane_trace);
+        }
+        return n;
+    }
     DWORD n = real_module_name(module, out, size);
     if (ane_trace != NULL) {
         fwprintf(ane_trace, L"GetModuleFileNameW %p -> %ls\n", (void *)module, n > 0 ? out : L"(none)");
@@ -228,6 +249,148 @@ static HANDLE WINAPI traced_find_first(LPCWSTR name, FINDEX_INFO_LEVELS level, L
         fflush(ane_trace);
     }
     return real_find_first(name, level, data, op, filter, flags);
+}
+
+/* --- Process-identity hooks: make ANE DLLs see stock Brawlhalla -------- */
+
+static void init_real_functions(void) {
+    HMODULE k32 = GetModuleHandleW(L"kernel32.dll");
+    if (k32 == NULL) return;
+    if (real_module_name == NULL)
+        real_module_name = (GetModuleFileNameWFn)GetProcAddress(k32, "GetModuleFileNameW");
+    if (real_get_cmdline_w == NULL)
+        real_get_cmdline_w = (GetCommandLineWFn)GetProcAddress(k32, "GetCommandLineW");
+    if (real_get_module_handle_w == NULL)
+        real_get_module_handle_w = (GetModuleHandleWFn)GetProcAddress(k32, "GetModuleHandleW");
+    if (real_get_proc_address == NULL)
+        real_get_proc_address = (GetProcAddressFn)GetProcAddress(k32, "GetProcAddress");
+}
+
+static int is_hashlink_name_w(const wchar_t *name) {
+    const wchar_t *base = name;
+    size_t len;
+    for (const wchar_t *p = name; *p; p++)
+        if (*p == L'\\' || *p == L'/') base = p + 1;
+    if (_wcsicmp(base, L"hl.exe") == 0 || _wcsicmp(base, L"hl.dll") == 0 ||
+        _wcsicmp(base, L"libhl.dll") == 0) return 1;
+    len = wcslen(base);
+    return len > 5 && _wcsicmp(base + len - 5, L".hdll") == 0;
+}
+
+static int is_hashlink_name_a(const char *name) {
+    const char *base = name;
+    size_t len;
+    for (const char *p = name; *p; p++)
+        if (*p == '\\' || *p == '/') base = p + 1;
+    if (_stricmp(base, "hl.exe") == 0 || _stricmp(base, "hl.dll") == 0 ||
+        _stricmp(base, "libhl.dll") == 0) return 1;
+    len = strlen(base);
+    return len > 5 && _stricmp(base + len - 5, ".hdll") == 0;
+}
+
+static void build_spoof_cmdline(void) {
+    if (spoof_exe_path[0] == 0 || spoof_cmdline_w[0] != 0) return;
+    _snwprintf(spoof_cmdline_w, MAX_PATH + 3, L"\"%s\"", spoof_exe_path);
+    WideCharToMultiByte(CP_ACP, 0, spoof_cmdline_w, -1, spoof_cmdline_a, sizeof(spoof_cmdline_a), NULL, NULL);
+}
+
+static LPWSTR WINAPI hooked_get_cmdline_w(void) {
+    if (spoof_cmdline_w[0] != 0) return spoof_cmdline_w;
+    return real_get_cmdline_w();
+}
+
+static LPSTR WINAPI hooked_get_cmdline_a(void) {
+    if (spoof_cmdline_a[0] != 0) return spoof_cmdline_a;
+    return GetCommandLineA();
+}
+
+static HMODULE WINAPI hooked_get_module_handle_w(LPCWSTR name) {
+    if (name != NULL && is_hashlink_name_w(name)) return NULL;
+    return real_get_module_handle_w(name);
+}
+
+static HMODULE WINAPI hooked_get_module_handle_a(LPCSTR name) {
+    if (name != NULL && is_hashlink_name_a(name)) return NULL;
+    return GetModuleHandleA(name);
+}
+
+static DWORD WINAPI hooked_module_name_a(HMODULE module, LPSTR out, DWORD size) {
+    if (module == NULL && spoof_exe_path[0] != 0 && size > 0) {
+        DWORD n = (DWORD)WideCharToMultiByte(CP_ACP, 0, spoof_exe_path, -1, out, (int)size, NULL, NULL);
+        if (n > 0) n--;
+        return n;
+    }
+    return GetModuleFileNameA(module, out, size);
+}
+
+static BOOL WINAPI hooked_query_image_name_w(HANDLE process, DWORD flags, LPWSTR name, PDWORD size) {
+    typedef BOOL (WINAPI *Fn)(HANDLE, DWORD, LPWSTR, PDWORD);
+    static Fn real_fn = NULL;
+    if ((process == GetCurrentProcess() || process == (HANDLE)-1) && spoof_exe_path[0] != 0) {
+        DWORD n = (DWORD)wcslen(spoof_exe_path);
+        if (n >= *size) { *size = n + 1; SetLastError(ERROR_INSUFFICIENT_BUFFER); return FALSE; }
+        wcscpy(name, spoof_exe_path);
+        *size = n;
+        return TRUE;
+    }
+    if (real_fn == NULL) {
+        HMODULE k32 = GetModuleHandleW(L"kernel32.dll");
+        real_fn = (Fn)real_get_proc_address(k32, "QueryFullProcessImageNameW");
+    }
+    if (real_fn == NULL) return FALSE;
+    return real_fn(process, flags, name, size);
+}
+
+static BOOL WINAPI hooked_enum_modules(HANDLE process, HMODULE *mods, DWORD cb, LPDWORD needed) {
+    typedef BOOL (WINAPI *Fn)(HANDLE, HMODULE *, DWORD, LPDWORD);
+    static Fn real_fn = NULL;
+    BOOL ok;
+    DWORD count, filled, out;
+    if (real_fn == NULL) {
+        HMODULE k32 = GetModuleHandleW(L"kernel32.dll");
+        real_fn = (Fn)real_get_proc_address(k32, "K32EnumProcessModules");
+        if (real_fn == NULL) {
+            HMODULE psapi = LoadLibraryW(L"psapi.dll");
+            if (psapi) real_fn = (Fn)real_get_proc_address(psapi, "EnumProcessModules");
+        }
+    }
+    if (real_fn == NULL) return FALSE;
+    ok = real_fn(process, mods, cb, needed);
+    if (!ok || process != GetCurrentProcess()) return ok;
+    count = *needed / sizeof(HMODULE);
+    filled = cb / sizeof(HMODULE);
+    if (count > filled) count = filled;
+    out = 0;
+    for (DWORD i = 0; i < count; i++) {
+        wchar_t modname[MAX_PATH];
+        if (real_module_name(mods[i], modname, MAX_PATH) > 0 && is_hashlink_name_w(modname))
+            continue;
+        mods[out++] = mods[i];
+    }
+    *needed = out * sizeof(HMODULE);
+    return TRUE;
+}
+
+static FARPROC WINAPI hooked_get_proc_address(HMODULE module, LPCSTR name) {
+    FARPROC hooked = NULL;
+    if (name != NULL && (ULONG_PTR)name > 0xFFFF) {
+        if (strcmp(name, "GetModuleFileNameW") == 0)              hooked = (FARPROC)traced_module_name;
+        else if (strcmp(name, "GetModuleFileNameA") == 0)         hooked = (FARPROC)hooked_module_name_a;
+        else if (strcmp(name, "GetCommandLineW") == 0)            hooked = (FARPROC)hooked_get_cmdline_w;
+        else if (strcmp(name, "GetCommandLineA") == 0)            hooked = (FARPROC)hooked_get_cmdline_a;
+        else if (strcmp(name, "GetModuleHandleW") == 0)           hooked = (FARPROC)hooked_get_module_handle_w;
+        else if (strcmp(name, "GetModuleHandleA") == 0)           hooked = (FARPROC)hooked_get_module_handle_a;
+        else if (strcmp(name, "QueryFullProcessImageNameW") == 0) hooked = (FARPROC)hooked_query_image_name_w;
+        else if (strcmp(name, "K32EnumProcessModules") == 0)      hooked = (FARPROC)hooked_enum_modules;
+        else if (strcmp(name, "EnumProcessModules") == 0)         hooked = (FARPROC)hooked_enum_modules;
+        if (ane_trace != NULL) {
+            fprintf(ane_trace, "GetProcAddress(%p, \"%s\")%s\n", (void *)module, name,
+                    hooked ? " [hooked]" : "");
+            fflush(ane_trace);
+        }
+        if (hooked) return hooked;
+    }
+    return real_get_proc_address(module, name);
 }
 
 static void patch_import(HMODULE module, const char *dll, const char *name, void *replacement, void **original) {
@@ -252,17 +415,35 @@ static void patch_import(HMODULE module, const char *dll, const char *name, void
     }
 }
 
-static void trace_imports(HMODULE module) {
-    const char *path = getenv("NC_ANE_TRACE");
-    if (path == NULL || path[0] == 0) return;
-    ane_trace = fopen(path, "w");
-    if (ane_trace == NULL) return;
-    patch_import(module, "KERNEL32.dll", "CreateFileW", (void *)traced_create_file, (void **)&real_create_file);
+static void patch_ane_imports(HMODULE module) {
+    init_real_functions();
+    if (spoof_exe_path[0] == 0) {
+        wchar_t cwd[MAX_PATH], check[MAX_PATH];
+        DWORD n = GetCurrentDirectoryW(MAX_PATH, cwd);
+        if (n > 0 && n < MAX_PATH - 20) {
+            _snwprintf(check, MAX_PATH, L"%s\\Brawlhalla.exe", cwd);
+            if (GetFileAttributesW(check) != INVALID_FILE_ATTRIBUTES)
+                wcscpy(spoof_exe_path, check);
+        }
+    }
+    build_spoof_cmdline();
     patch_import(module, "KERNEL32.dll", "GetModuleFileNameW", (void *)traced_module_name, (void **)&real_module_name);
-    patch_import(module, "KERNEL32.dll", "FindFirstFileExW", (void *)traced_find_first, (void **)&real_find_first);
-    fwprintf(ane_trace, L"traced: CreateFileW %p, GetModuleFileNameW %p, FindFirstFileExW %p\n",
-             (void *)real_create_file, (void *)real_module_name, (void *)real_find_first);
-    fflush(ane_trace);
+    patch_import(module, "KERNEL32.dll", "GetCommandLineW", (void *)hooked_get_cmdline_w, (void **)&real_get_cmdline_w);
+    patch_import(module, "KERNEL32.dll", "GetModuleHandleW", (void *)hooked_get_module_handle_w, (void **)&real_get_module_handle_w);
+    patch_import(module, "KERNEL32.dll", "GetProcAddress", (void *)hooked_get_proc_address, (void **)&real_get_proc_address);
+    {
+        const char *path = getenv("NC_ANE_TRACE");
+        if (path != NULL && path[0] != 0) {
+            if (ane_trace == NULL) ane_trace = fopen(path, "w");
+            if (ane_trace != NULL) {
+                patch_import(module, "KERNEL32.dll", "CreateFileW", (void *)traced_create_file, (void **)&real_create_file);
+                patch_import(module, "KERNEL32.dll", "FindFirstFileExW", (void *)traced_find_first, (void **)&real_find_first);
+                fwprintf(ane_trace, L"patched module %p: spoof=%ls\n",
+                         (void *)module, spoof_exe_path[0] ? spoof_exe_path : L"(none)");
+                fflush(ane_trace);
+            }
+        }
+    }
 }
 
 HL_PRIM int HL_NAME(load)(vbyte *dll_path, vbyte *search_dir, vbyte *initializer, vbyte *finalizer) {
@@ -282,7 +463,7 @@ HL_PRIM int HL_NAME(load)(vbyte *dll_path, vbyte *search_dir, vbyte *initializer
     free(path);
     free(dir);
     if (e->module == NULL) return -3;
-    trace_imports(e->module);
+    patch_ane_imports(e->module);
     init =(FREInitializer)GetProcAddress(e->module, (const char *)initializer);
     e->finalizer = (FREFinalizer)GetProcAddress(e->module, (const char *)finalizer);
     if (init == NULL) return -4;

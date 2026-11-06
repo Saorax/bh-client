@@ -14,6 +14,10 @@ class BuiltinExtensions {
         });
         Extensions.register("SoundEngineExtension", (_) -> (NativeAne.load(Launch.applicationDirectory(), "SoundEngineExtension",
             "SoundEngineExtInitializer", "SoundEngineExtFinalizer", false) : ExtensionImpl));
+        Extensions.register("DnaManager", (_) -> (NativeAne.load(Launch.applicationDirectory(), "DnaManager",
+            "DnaInitializer", "DnaFinalizer") : ExtensionImpl));
+        Extensions.register("MultiKeyboard", (_) -> (NativeAne.load(Launch.applicationDirectory(), "MultiKeyboard",
+            "ExtInitializer", "ExtFinalizer", false) : ExtensionImpl));
         Extensions.register("RawData", (_) -> SwzArchive.extension());
         Extensions.register("WindowsExtensionWrapper", (_) -> new ExtensionImpl()
             .define("as_getRefreshRate", (_) -> (refreshRate() : Dynamic))

@@ -8,8 +8,8 @@ class NcMatchStats {
             var post:Dynamic = bh.platform.PostMatchStats;
             if (from == 6 && to == 3) {
                 var core:Dynamic = ScreenManager.owner;
-                if (core == null || (Std.int(core.var_3645) & 4) == 0 || GameApp.var_2125 || !bh.platform.PostMatchStats.on) return;
-                GameApp.var_2125 = true;
+                if (core == null || (Std.int(core.var_3645) & 4) == 0 || GameApp.var_2128 || !bh.platform.PostMatchStats.on) return;
+                GameApp.var_2128 = true;
                 Reflect.setField(post, "ownDump", true);
                 Reflect.setField(post, "tracking", true);
                 Reflect.setField(post, "strings", []);
@@ -23,7 +23,7 @@ class NcMatchStats {
             if (to != 2) return;
             if (post.last != null || Reflect.field(post, "tracking") != true) return;
             var core:Dynamic = ScreenManager.owner;
-            var why = core == null ? "no game" : "end " + core.var_14566 + ", rules " + (core.var_9125 != null) + ", stats flag " + GameApp.var_2125;
+            var why = core == null ? "no game" : "end " + core.var_14568 + ", rules " + (core.var_9125 != null) + ", stats flag " + GameApp.var_2128;
             try {
                 Reflect.callMethod(post, Reflect.field(post, "capture"), [core]);
             } catch (e:Dynamic) {

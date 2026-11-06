@@ -18,5 +18,24 @@ class NcOverlay {
         NcPresence.tick();
         NcRanked.scoreboard();
         NcThumbs.tick();
-        try NcTrainLink.tick() catch (e:Dynamic) NcLog.say("online training: " + e);    }
+        try NcTrainLink.tick() catch (e:Dynamic) NcLog.say("online training: " + e);
+        videoTest();
+        NcWindow.tick();
+    }
+
+
+    static var videoFrames = 0;
+
+    static function videoTest():Void {
+        if (videoFrames < 0) return;
+        var url = Sys.getEnv("NC_VIDEO_TEST");
+        if (url == null) {
+            videoFrames = -1;
+            return;
+        }
+        if (++videoFrames < 1500) return;
+        videoFrames = -1;
+        NcLog.say("video test: " + url);
+        Class_747.method_3990(new Class_748(url));
+    }
 }

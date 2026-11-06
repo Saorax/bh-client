@@ -18,6 +18,13 @@ Everything below is client-side: it runs on your PC and sends nothing extra to B
 **Game and connection**
 - The unmodified game on the official servers, on a completely new engine (HashLink + Heaps) instead of Adobe AIR.
 - Logs in with your install's own Steam extension, so your account works as usual.
+- The game's own telemetry runs as in the stock game, through your install's `DnaManager` extension.
+- The game's in-game videos play, through Windows Media Foundation.
+- The game's taskbar flash, Maximized window mode, `-multikeyboard` (your install's own extension), Copy Image, alt-tab
+  handling, redirects and shutdown when the window is closed all work as they do in the stock game. Settings are written
+  when the game exits, connecting to a server no longer freezes the game, and a second launch leaves the running game alone.
+- If a renderer can't start on your PC, the launcher moves on to the next one (DirectX 11, Vulkan, DirectX 12), saves it
+  and says why in `logs/launcher.txt`.
 
 **Performance and display** (Options, GRAPHICS)
 - Frame pacing (F11), frame rate (monitor, unlimited or a number), VSYNC.
@@ -140,7 +147,8 @@ from `bifrost-gen/hooks.json`, each a pure insertion at an anchor that is unique
 moves an anchor fails the build loudly, so the names get re-mapped before an Official release for that version.
 
 Diagnostics (environment variables for `run`): `NC_WIRE=1` logs each TCP read and write (first 64 bytes) to
-`build/boot.txt`; `NC_ANE_TRACE=<file>` logs the files and module paths `SteamAir.dll` asks for. The game's own
+`build/boot.txt`; `NC_ANE_TRACE=<file>` logs the files and module paths `SteamAir.dll` asks for; `NC_VIDEO_TEST=<url or
+file>` plays a video through the game's video manager shortly after boot. The game's own
 `[ChecksumManager]` messages always go to the log.
 
 `build/` holds decompiled game code: it is never committed or shared.

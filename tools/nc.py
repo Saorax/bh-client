@@ -1,6 +1,6 @@
 """new-client: the raw game on the port's new engine, on the official servers.
 
-    python tools/nc.py export            # the port's raw 11.00 game and Heaps engine -> build/, with our layer
+    python tools/nc.py export            # the port's raw 11.00.49 game and Heaps engine -> build/, with our layer
     python tools/nc.py build             # compile the official game (dx11, dx12) -> build/engine/official
     python tools/nc.py run --game DIR [--offline] [--view DIR] [--seconds N] [--shots FRAME...] [-- GAME ARGS...]
     python tools/nc.py check             # the port files our runtime shadows
@@ -32,7 +32,7 @@ GAME_SRC = BUILD / "raw-game" / "src"
 RUNTIME = ROOT / "runtime"
 NATIVE = ROOT / "native"
 SHADOWS = RUNTIME / "shadows.json"
-VERSION = "11.00"
+VERSION = "11.00.49"
 STEAM_APP_ID = "291550"
 
 def port_root() -> Path:
@@ -105,8 +105,9 @@ def build_native() -> int:
         steps = [
             f'cl /nologo /O2 /LD /W3 /I"{fre}" "{fre / "fre_shim.c"}" "{NATIVE / "fre_more.c"}" /Fo"{tmp}\\\\" '
             f'/Fe"{out / "Adobe AIR.dll"}" /link /IMPLIB:"{tmp}\\fre.lib"',
-            f'cl /nologo /O2 /LD /W3 /I"{fre}" /I"{lime_hl / "include"}" "{NATIVE / "ncane.c"}" "{NATIVE / "ncsteam.c"}" /Fo"{tmp}\\\\" '
-            f'/Fe"{out / "ncane.hdll"}" /link "{lime_hl / "Windows64" / "libhl.lib"}" /IMPLIB:"{tmp}\\ncane.lib"',
+            f'cl /nologo /O2 /LD /W3 /I"{fre}" /I"{lime_hl / "include"}" "{NATIVE / "ncane.c"}" "{NATIVE / "ncsteam.c"}" "{NATIVE / "ncvideo.c"}" "{NATIVE / "ncwin.c"}" /Fo"{tmp}\\\\" '
+            f'/Fe"{out / "ncane.hdll"}" /link "{lime_hl / "Windows64" / "libhl.lib"}" user32.lib gdi32.lib ole32.lib oleaut32.lib shell32.lib '
+            f'mfuuid.lib uuid.lib windowscodecs.lib /IMPLIB:"{tmp}\\ncane.lib"',
         ]
         script = Path(tmp) / "build.bat"
         script.write_text("@echo off\r\n" + f'call "{vcvars}" >nul\r\n'
@@ -193,9 +194,13 @@ def run(args: argparse.Namespace) -> int:
         env["NC_OFFLINE"] = "1"
         game_args.insert(0, "-forceoffline")
     bin_dir = ENGINE / "bin"
+    exe = bin_dir / "Brawlhalla.exe"
+    hl = bin_dir / "hl.exe"
+    if hl.exists() and (not exe.exists() or exe.stat().st_mtime < hl.stat().st_mtime):
+        shutil.copy2(hl, exe)
     if args.view:
         env["BH_NC_VIEW"] = str(Path(args.view).resolve())
-    command = [str(bin_dir / "hl.exe"), str(ENGINE / "official" / f"game-{args.renderer}.hl"), *game_args]
+    command = [str(exe), str(ENGINE / "official" / f"game-{args.renderer}.hl"), *game_args]
     process = subprocess.Popen(command, cwd=bin_dir, env=env)
     try:
         process.wait(timeout=args.seconds if args.seconds > 0 else None)

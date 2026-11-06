@@ -125,7 +125,17 @@ PATCHES = [
     ("OptionsScreen", "(tab <= 2 || tab == 4 ?", "(tab <= 2 ?"),
     ("OptionsScreen", "SEARCHED:Array<Dynamic> = [0,1,2,5,6,7,8];", "SEARCHED:Array<Dynamic> = [0,1,2,3,4];"),
     ("OptionsScreen", ("span", "      private function servers():Array<Dynamic>\n", "      private var typed:Dynamic = {};\n"), ""),
-    ("OptionsScreen", ("span", '            ["UNLOCK ACHIEVEMENTS",', '         var y:Float = 10;'), "            ];\n"),
+    ("OptionsScreen", ("span", '            ["UNLOCK ACHIEVEMENTS",', '         var y:Float = 10;'),
+     "            ];\n"
+     "         if(ScreenManager.owner.var_3865 != 0)\n"
+     "         {\n"
+     '            entries.push(["ACCOUNT LINKING","Link this account to your Ubisoft account and your other platforms, '
+     "the game's own Account Linking screen.\",function():Void\n"
+     "            {\n"
+     "               close();\n"
+     "               ScreenManager.var_2627.Display();\n"
+     "            }]);\n"
+     "         }\n"),
     ("LobbySettingsScreen", '["GAME RULES","LOBBY","PRESETS","NETWORK"]', '["GAME RULES","LOBBY","PRESETS"]'),
     ("LobbySettingsScreen", "            case 2:\n               buildPresets();\n            default:\n               buildNetwork();\n",
      "            default:\n               buildPresets();\n"),

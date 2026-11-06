@@ -40,7 +40,7 @@ class NcTiers {
 
     static function thresholds():Array<Int> {
         var out:Array<Int> = [];
-        var steps = Class_197.var_2499;
+        var steps = Class_197.var_2503;
         if (steps != null) for (i in 0...steps.length) {
             var v = Std.int(steps[i]);
             if (v > 0 && out.indexOf(v) < 0) out.push(v);

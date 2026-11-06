@@ -15,8 +15,8 @@ class NcRtt implements Class_225 {
         bh.platform.Hooks.frameStarting.add(function():Void {
             var core:Dynamic = ScreenManager.owner;
             if (core == null) return;
-            var current:Class_225 = core.var_5920;
-            if (current != null && !Std.isOfType(current, NcRtt)) core.var_5920 = new NcRtt(current);
+            var current:Class_225 = core.var_5919;
+            if (current != null && !Std.isOfType(current, NcRtt)) core.var_5919 = new NcRtt(current);
         });
     }
 

@@ -28,12 +28,45 @@ ENGINE_PATCHES = [
      "\t\t\tGameApp.forceOffline = true;\n",
      "\t\t\tport.runtime.services.NativeAne.log = log;\n\t\t\tport.runtime.NcLog.log = log;\n"
      "\t\t\tport.runtime.RootSwf.attach(log);\n"),
+    ("port/engine/HeapsMain.hx", "\t\t\tDnaTelemetry.dnaDisabled = true;\n", ""),
     ("port/engine/HeapsMain.hx",
      "\t\t\tBootDocument.staticInit();\n",
      "\t\t\tport.runtime.NcLog.log = log;\n\t\t\tport.runtime.NcSaves.start();\n\t\t\tBootDocument.staticInit();\n"),
     ("port/engine/HeapsMain.hx",
      "\t\trenderTick(e);\n",
      "\t\trenderTick(e);\n\t\tport.runtime.NcOverlay.frame(e);\n"),
+    ("port/runtime/As3.hx",
+     "        return {\n            width: 0,\n            height: 0,\n"
+     "            addEventListener: function(type:Dynamic, listener:Dynamic):Void {},\n"
+     "            maximize: function():Void {},\n            restore: function():Void {},\n"
+     "            notifyUser: function(type:Dynamic):Void {}\n        };\n",
+     "        return NcWindow.get();\n"),
+    ("port/engine/WindowInput.hx",
+     "\t\tflash.desktop.NativeApplication.nativeApplication.activeWindow = on ? window : null;\n",
+     "\t\tflash.desktop.NativeApplication.nativeApplication.activeWindow = on ? window : null;\n"
+     "\t\tport.runtime.NcWindow.focus(on);\n"),
+    ("flash/desktop/NativeApplication.hx", "        Sys.exit(errorCode);\n",
+     "        flash.net.SharedObject.flushAll();\n        port.runtime.services.NativeAne.disposeAll();\n        Sys.exit(errorCode);\n"),
+    ("flash/net/SharedObject.hx", "    public function clear():Void {\n",
+     "    public static function flushAll():Void {\n"
+     "        for (shared in opened) try shared.flush() catch (e:Dynamic) port.runtime.NcLog.say(\"saves: \" + e);\n"
+     "    }\n\n    public function clear():Void {\n"),
+    ("flash/desktop/Clipboard.hx",
+     "\t\tif (system && isText(format)) return hxd.System.setClipboardText(data == null ? \"\" : Std.string(data));\n",
+     "\t\tif (system && Std.isOfType(data, flash.display.BitmapData)) return port.runtime.NcWindow.clipboardBitmap(data);\n"
+     "\t\tif (system && isText(format)) return hxd.System.setClipboardText(data == null ? \"\" : Std.string(data));\n"),
+    ("flash/desktop/ClipboardFormats.hx", "ClipboardFormats return cast -1;\n", "ClipboardFormats return cast \"air:bitmap\";\n"),
+    ("flash/net/Socket.hx", "        return Std.int(input().readUnsignedInt());\n", "        return input().readInt();\n"),
+    ("flash/net/Socket.hx", "        pumping = tcp.connected;\n", "        pumping = tcp.connected || tcp.connecting;\n"),
+    ("openfl/net/URLLoader.hx", "\tpublic function run():HttpResult {\n\t\tvar result = new HttpResult(url);\n",
+     "\tvar redirect:Null<String> = null;\n\n\tpublic function run():HttpResult {\n\t\tvar result = attempt();\n"
+     "\t\tfor (_ in 0...5) {\n\t\t\tif (result.status < 300 || result.status >= 400 || redirect == null) break;\n"
+     "\t\t\turl = port.runtime.NcWindow.redirected(url, redirect);\n\t\t\tredirect = null;\n\t\t\tresult = attempt();\n\t\t}\n"
+     "\t\treturn result;\n\t}\n\n\tfunction attempt():HttpResult {\n\t\tvar result = new HttpResult(url);\n"),
+    ("openfl/net/URLLoader.hx", "\t\t\t\tif (!failed) result.body = output.getBytes();\n\t\t\t}\n",
+     "\t\t\t\tif (!failed) result.body = output.getBytes();\n\t\t\t}\n"
+     "\t\t\tif (http.responseHeaders != null)\n\t\t\t\tfor (name in http.responseHeaders.keys())\n"
+     "\t\t\t\t\tif (name.toLowerCase() == \"location\") redirect = http.responseHeaders.get(name);\n"),
 ]
 
 PREVIEW_START = "      public function method_1738():Void\n      {\n"
@@ -41,17 +74,20 @@ CLEAR_START = "      override public function OnClearScreen():Void\n      {\n"
 
 GAME_PATCHES = [
     ("HttpCall.hx",
-     "var_4815(var_12408.data,var_14547);",
-     "var_4815(port.runtime.AirCoerce.forCallee(var_4815, 0, var_12408.data),var_14547);"),
-    ("ScreenMatchPreviewRanked1v1.hx", PREVIEW_START, PREVIEW_START + "         port.runtime.NcRanked.preview(this, owner, var_8005, 1);\n"),
+     "var_4812(var_12407.data,var_14549);",
+     "var_4812(port.runtime.AirCoerce.forCallee(var_4812, 0, var_12407.data),var_14549);"),
+    ("ScreenMatchPreviewRanked1v1.hx", PREVIEW_START, PREVIEW_START + "         port.runtime.NcRanked.preview(this, owner, var_8008, 1);\n"),
     ("ScreenMatchPreviewRanked1v1.hx", CLEAR_START, CLEAR_START + "         port.runtime.NcRanked.clear();\n"),
-    ("ScreenMatchPreviewRanked2v2.hx", PREVIEW_START, PREVIEW_START + "         port.runtime.NcRanked.preview(this, owner, var_8005, 2);\n"),
+    ("ScreenMatchPreviewRanked2v2.hx", PREVIEW_START, PREVIEW_START + "         port.runtime.NcRanked.preview(this, owner, var_8008, 2);\n"),
     ("ScreenMatchPreviewRanked2v2.hx", CLEAR_START, CLEAR_START + "         port.runtime.NcRanked.clear();\n"),
     ("Class_646.hx", "            _loc2_ = Class_55.method_791(port.runtime.As3.stringParam(param1),false);\n",
      "            _loc2_ = Class_55.method_791(port.runtime.As3.stringParam(param1),false);\n"
      "            port.runtime.NcThumbs.shown(this, param1, _loc2_);\n"),
-    ("Class_437.hx", "         method_2254(Class_197.method_1562(var_7830));\n",
-     "         method_2254(Class_197.method_1562(var_7830));\n         port.runtime.NcRanked.after(_loc2_, param1);\n"),
+    ("Class_437.hx", "         method_2254(Class_197.method_1562(var_7833));\n",
+     "         method_2254(Class_197.method_1562(var_7833));\n         port.runtime.NcRanked.after(_loc2_, param1);\n"),
+    ("GameApp.hx", "         port.runtime.As3.nativeWindow(_loc4_).width = param1;\n"
+     "         port.runtime.As3.nativeWindow(_loc4_).height = param2;\n",
+     "         port.runtime.NcWindow.resize(param1,param2);\n"),
 ]
 
 
@@ -96,6 +132,8 @@ def write_overlay(engine: Path, game_src: Path, overlay: Path) -> int:
     for rel, old, new in ENGINE_PATCHES:
         target = overlay / rel
         source = target if target.exists() else engine / "src" / rel
+        if not source.exists():
+            source = engine / "runtime" / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(patched(source.read_text(encoding="utf-8"), old, new, f"engine src/{rel}"), encoding="utf-8")
     game: dict[str, list[tuple[str, str]]] = {}

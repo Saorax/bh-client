@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GEN = ROOT / "bifrost-gen"
 STUBS = ROOT / "bifrost-stubs"
-DEFAULT_EXPORT = Path(os.environ.get("BIFROST_ENGINE") or ROOT.parent / "bifrost-engine") / "build" / "bifrost-11.00" / "export" / "src"
+DEFAULT_EXPORT = Path(os.environ.get("BIFROST_ENGINE") or ROOT.parent / "bifrost-engine") / "build" / "bifrost-11.00.49" / "export" / "src"
 DEFAULT_RAW = ROOT / "build" / "raw-game" / "src"
 MARK = re.compile(r"\s*// bifrost:([a-z0-9-]+)\s*$")
 IDENT = re.compile(r"\b[A-Z][A-Za-z0-9_]*\b")

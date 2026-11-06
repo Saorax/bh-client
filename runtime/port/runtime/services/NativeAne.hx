@@ -67,7 +67,9 @@ class NativeAne extends ExtensionImpl {
     }
 
     static var statusLogged = 0;
-    static final WATCHED = ["SteamAir_IsOverlayEnabled", "SteamAir_ActivateGameOverlayToStore", "SteamAir_GetSteamOrder", "Init", "LoadBank"];
+    static var dnaPackets = 0;
+    static final WATCHED = ["SteamAir_IsOverlayEnabled", "SteamAir_ActivateGameOverlayToStore", "SteamAir_GetSteamOrder", "Init", "LoadBank", "MultiKeyboard_Init", "MultiKeyboard_LoseFocus",
+        "MultiKeyboard_GainFocus"];
 
     static function say(text:String):Void {
         if (log != null) log(text);
@@ -123,6 +125,12 @@ class NativeAne extends ExtensionImpl {
             target.position = position;
         }
         if (WATCHED.indexOf(name) >= 0 && statusLogged++ < 200) say("extension " + name + "(" + args.join(", ") + ") = " + Std.string(value));
+        if (name == "Dna_InitDnaManager") say("extension DnaManager: telemetry started");
+        else if (name == "Dna_GetNextPacket" && dnaPackets < 5 && Std.string(value) == "true") {
+            dnaPackets++;
+            var packet:flash.utils.ByteArray = args[0];
+            say("extension DnaManager: telemetry packet of " + packet.length + " bytes");
+        }
         return value;
     }
 
@@ -204,6 +212,11 @@ class NativeAne extends ExtensionImpl {
         open.remove(handle);
         Native.dispose(handle);
         super.dispose();
+    }
+
+    public static function disposeAll():Void {
+        var all = [for (ext in open) ext];
+        for (ext in all) try ext.dispose() catch (e:Dynamic) say("dispose: " + e);
     }
 }
 

@@ -16,7 +16,7 @@ class NcDiag {
             var display:Dynamic = bh.platform.InputDisplay;
             var post:Dynamic = bh.platform.PostMatchStats;
             NcLog.say("match diag: state " + from + " -> " + to + ", flags " + flags + ", stats dumps " + dumps
-                + ", stats flag " + GameApp.var_2125 + " own " + Reflect.field(post, "ownDump") + " fresh " + Reflect.field(post, "fresh")
+                + ", stats flag " + GameApp.var_2128 + " own " + Reflect.field(post, "ownDump") + " fresh " + Reflect.field(post, "fresh")
                 + " tracking " + Reflect.field(post, "tracking") + ", input display listening " + Reflect.field(display, "listening")
                 + ", online " + NcStats.inMatch());
         });
@@ -37,7 +37,7 @@ class NcDiag {
         });
         first(Hooks.statsDumping, function(dumper:Dynamic):Bool {
             dumps++;
-            NcLog.say("match diag: the game writes its match stats, stats flag " + GameApp.var_2125);
+            NcLog.say("match diag: the game writes its match stats, stats flag " + GameApp.var_2128);
             return false;
         });
     }
