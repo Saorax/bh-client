@@ -235,12 +235,28 @@ def hook_sites(export: Path, raw: Path, known: dict[str, Path], allowed_classes:
                 skipped.append(f"{rel.as_posix()} {take[0][0]}: no unique anchor")
                 continue
             opens_block = anchor.rstrip("\n").split("\n")[-1].strip() == "{"
-            if after is not None and not opens_block and anchor + after + "\n" not in raw_text and anchor + after not in raw_text:
-                skipped.append(f"{rel.as_posix()} {take[0][0]}: not a pure insertion")
-                continue
-            sites.append({"file": rel.as_posix(), "anchor": anchor, "insert": "".join(code + "\n" for _, code in take),
-                          "ids": [h for h, _ in take]})
+            insert = "".join(code + "\n" for _, code in take)
+            replaces = ""
+            if after is not None and anchor + after + "\n" not in raw_text and anchor + after not in raw_text:
+                replaces = (replaced_lines(raw_text, anchor, after, insert) or "") if opens_block else None
+                if replaces is None:
+                    skipped.append(f"{rel.as_posix()} {take[0][0]}: not a pure insertion")
+                    continue
+            site = {"file": rel.as_posix(), "anchor": anchor, "insert": insert, "ids": [h for h, _ in take]}
+            if replaces:
+                site["replaces"] = replaces
+            sites.append(site)
     return sites, skipped
+
+
+def replaced_lines(raw_text: str, anchor: str, after: str, insert: str) -> str | None:
+    rest = raw_text[raw_text.index(anchor) + len(anchor):].split("\n")
+    kept = {line.strip() for line in insert.split("\n") if line.strip()}
+    for n in range(1, 4):
+        if n < len(rest) and rest[n] == after:
+            gone = rest[:n]
+            return "".join(line + "\n" for line in gone) if all(line.strip() in kept for line in gone) else None
+    return None
 
 
 def startup_calls(known: dict[str, Path]) -> list[tuple[str, str]]:

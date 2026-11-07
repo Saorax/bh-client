@@ -40,6 +40,35 @@ typedef struct {
     uint16_t query_port;
     uint64_t lobby;
 } FriendGame;
+
+typedef struct {
+    SteamIdentity remote;
+    int64_t user_data;
+    uint32_t listen_socket;
+    uint8_t address[18];
+    uint16_t pad;
+    uint32_t pop_remote;
+    uint32_t pop_relay;
+    int state;
+    int end_reason;
+    char end_debug[128];
+    char description[128];
+    int flags;
+    uint32_t reserved[63];
+} SessionInfo;
+
+typedef struct {
+    int available;
+    int measuring_ping;
+    int network_config;
+    int any_relay;
+    char debug[256];
+} RelayStatus;
+
+typedef struct {
+    int available;
+    char debug[256];
+} AuthStatus;
 #pragma pack(pop)
 
 enum { IDENTITY_STEAM_ID = 16, FRIENDS_IMMEDIATE = 4, SEND_UNRELIABLE_NO_DELAY = 5, SEND_RELIABLE = 8,
@@ -56,6 +85,10 @@ typedef void (*RequestCallback)(void *);
 typedef bool (*SetCallbackFn)(void *, RequestCallback);
 typedef void (*RelayFn)(void *);
 typedef void (*RunCallbacksFn)(void *);
+typedef void (*SteamCallbacksFn)(void);
+typedef int (*RelayStatusFn)(void *, RelayStatus *);
+typedef int (*AuthStatusFn)(void *, AuthStatus *);
+typedef int (*InitAuthFn)(void *);
 typedef int (*FriendCountFn)(void *, int);
 typedef uint64_t (*FriendByIndexFn)(void *, int, int);
 typedef const char *(*FriendNameFn)(void *, uint64_t);
@@ -70,6 +103,9 @@ typedef int (*PersonaStateFn)(void *, uint64_t);
 
 static void *messages, *friends, *user, *utils, *steam_utils, *sockets;
 static RunCallbacksFn run_callbacks;
+static SteamCallbacksFn steam_callbacks;
+static RelayStatusFn relay_status;
+static AuthStatusFn auth_status;
 static SetIdFn set_id;
 static SendFn send_to;
 static ReceiveFn receive_on;
@@ -120,6 +156,7 @@ HL_PRIM int HL_NAME(steam_open)(void) {
     SetCallbackFn set_callback;
     RelayFn relay;
     AccessorFn sockets_accessor;
+    InitAuthFn init_auth;
     if (opened) return opened;
     api = GetModuleHandleW(L"steam_api64.dll");
     if (api == NULL) return opened = -1;
@@ -158,12 +195,46 @@ HL_PRIM int HL_NAME(steam_open)(void) {
     sockets_accessor = (AccessorFn)GetProcAddress(api, "SteamAPI_SteamNetworkingSockets_SteamAPI_v012");
     sockets = sockets_accessor ? sockets_accessor() : NULL;
     run_callbacks = (RunCallbacksFn)GetProcAddress(api, "SteamAPI_ISteamNetworkingSockets_RunCallbacks");
+    steam_callbacks = (SteamCallbacksFn)GetProcAddress(api, "SteamAPI_RunCallbacks");
+    relay_status = (RelayStatusFn)GetProcAddress(api, "SteamAPI_ISteamNetworkingUtils_GetRelayNetworkStatus");
+    auth_status = (AuthStatusFn)GetProcAddress(api, "SteamAPI_ISteamNetworkingSockets_GetAuthenticationStatus");
+    init_auth = (InitAuthFn)GetProcAddress(api, "SteamAPI_ISteamNetworkingSockets_InitAuthentication");
+    if (sockets && init_auth) init_auth(sockets);
     relay(utils);
     return opened = 1;
 }
 
+HL_PRIM vbyte *HL_NAME(steam_status)(int *out_length) {
+    char text[768];
+    RelayStatus network;
+    AuthStatus auth;
+    memset(&network, 0, sizeof network);
+    memset(&auth, 0, sizeof auth);
+    if (opened != 1) return NULL;
+    if (sockets && auth_status) auth_status(sockets, &auth);
+    if (relay_status) relay_status(utils, &network);
+    snprintf(text, sizeof text, "login %d (%s), relay %d, config %d, any relay %d (%s)", auth.available, auth.debug, network.available,
+             network.network_config, network.any_relay, network.debug);
+    return copy_text(text, out_length);
+}
+
+HL_PRIM vbyte *HL_NAME(steam_link)(vbyte *id, int *out_length) {
+    char text[512];
+    SteamIdentity who;
+    SessionInfo info;
+    int state;
+    if (opened != 1 || !identity(id, &who)) return NULL;
+    memset(&info, 0, sizeof info);
+    state = session_info(messages, &who, &info, NULL);
+    if (state != info.state) snprintf(text, sizeof text, "state %d, details unreadable (%d)", state, info.state);
+    else snprintf(text, sizeof text, "state %d, end %d (%s), %s", state, info.end_reason, info.end_debug, info.description);
+    return copy_text(text, out_length);
+}
+
 HL_PRIM void HL_NAME(steam_pump)(void) {
-    if (opened == 1 && sockets && run_callbacks) run_callbacks(sockets);
+    if (opened != 1) return;
+    if (steam_callbacks) steam_callbacks();
+    if (sockets && run_callbacks) run_callbacks(sockets);
 }
 
 HL_PRIM vbyte *HL_NAME(steam_me)(int *out_length) {
@@ -272,6 +343,8 @@ HL_PRIM vbyte *HL_NAME(steam_avatar)(vbyte *id, int *out_width, int *out_height)
 
 DEFINE_PRIM(_I32, steam_open, _NO_ARG);
 DEFINE_PRIM(_VOID, steam_pump, _NO_ARG);
+DEFINE_PRIM(_BYTES, steam_status, _REF(_I32));
+DEFINE_PRIM(_BYTES, steam_link, _BYTES _REF(_I32));
 DEFINE_PRIM(_BYTES, steam_avatar, _BYTES _REF(_I32) _REF(_I32));
 DEFINE_PRIM(_BYTES, steam_me, _REF(_I32));
 DEFINE_PRIM(_BYTES, steam_friends, _REF(_I32));

@@ -112,7 +112,8 @@ class NcRanked {
             var placing = total > 0 && games < total;
             if (duo) {
                 note("2v2", personal);
-                note("team", team);
+                var pair = ServerStats.lobbyTeam(core);
+                if (pair != null) note(pair, team);
             } else {
                 note(ladder, mine);
             }

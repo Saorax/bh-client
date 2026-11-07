@@ -119,7 +119,8 @@ def bifrost_hooks() -> list[tuple[str, str, str]]:
     if not path.exists():
         return []
     import json
-    return [(h["file"], h["anchor"], h["anchor"] + h["insert"]) for h in json.loads(path.read_text(encoding="utf-8"))]
+    return [(h["file"], h["anchor"] + h.get("replaces", ""), h["anchor"] + h["insert"])
+            for h in json.loads(path.read_text(encoding="utf-8"))]
 
 
 def write_overlay(engine: Path, game_src: Path, overlay: Path) -> int:

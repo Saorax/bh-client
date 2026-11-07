@@ -2,8 +2,9 @@ package port.runtime;
 
 import bh.platform.net.P2PSession;
 import bh.platform.net.PeerTraining;
+import bh.platform.net.TrainingSync;
 
-typedef Invite = {id:String, name:String};
+typedef Invite = {id:String, name:String, at:Float};
 
 class NcTrainLink {
     static inline var CONTROL = 0;
@@ -11,10 +12,14 @@ class NcTrainLink {
     static inline var PROTOCOL = 1;
     static inline var INVITE_MS = 30000.0;
     static inline var START_GRACE_MS = 5000.0;
+    static inline var JOIN_MS = 15000.0;
+    static inline var CLOSE_MS = 2000.0;
     static inline var PUMP_MS = 100.0;
     static inline var ACCEPT_MS = 1000.0;
     static inline var STEAM_OK = 1;
     static inline var LINK_CONNECTED = 3;
+    static inline var LINK_CLOSED_BY_PEER = 4;
+    static inline var LINK_PROBLEM = 5;
 
     static var opened = false;
     static var udp:sys.net.UdpSocket = null;
@@ -28,6 +33,9 @@ class NcTrainLink {
     static var state = "idle";
     static var invitedAt = 0.0;
     static var startedAt = 0.0;
+    static var joinedAt = 0.0;
+    static var menuPaused = false;
+    static var closing:Map<String, Float> = new Map();
     static var invites:Array<Invite> = [];
     static var friendCache:Array<{id:String, name:String, playing:Bool, online:Bool}> = [];
     static var friendsAt = -1e9;
@@ -37,6 +45,7 @@ class NcTrainLink {
     static var linkState = -1;
     static var linkUp = false;
     static var heard:Map<String, Bool> = new Map();
+    static var incoming:Map<String, Int> = new Map();
 
     static function now():Float {
         return haxe.Timer.stamp() * 1000;
@@ -46,6 +55,7 @@ class NcTrainLink {
         if (opened) return;
         opened = true;
         auto = false;
+        bh.platform.Hooks.pauseMenuPausing.add(pauseMenuOpened);
         bh.mods.lobbyscreen.TrainingSettingsScreen.online = window();
         var spec = Sys.getEnv("NC_TRAIN_UDP");
         if (spec != null && spec != "") {
@@ -110,10 +120,11 @@ class NcTrainLink {
             case "invite":
                 if (state != "idle") {
                     control({t: "decline", why: "busy"}, from);
+                    closeSoon(from);
                     return;
                 }
                 invites = invites.filter(i -> i.id != from);
-                invites.push({id: from, name: Std.string(m.name)});
+                invites.push({id: from, name: Std.string(m.name), at: now()});
                 say(Std.string(m.name) + " invites you to online training: Training settings, Online Training tab");
                 if (auto && udp != null) accept(from);
             case "cancel":
@@ -122,9 +133,17 @@ class NcTrainLink {
                 if (state == "inviting" && from == partner) {
                     say(partnerName + " declined" + (m.why != null ? " (" + m.why + ")" : ""));
                     reset();
+                } else if (state == "accepting" && from == partner) {
+                    say("Couldn't join " + partnerName + (m.why != null ? ": " + m.why : ""));
+                    reset();
                 }
             case "accept":
-                if (state == "inviting" && from == partner) start(m.records);
+                if (state == "inviting" && from == partner) {
+                    start(m.records);
+                } else if (from != partner) {
+                    control({t: "decline", why: "the invite expired"}, from);
+                    closeSoon(from);
+                }
             case "start":
                 if (state == "accepting" && from == partner) begin(m.records, m.room, m.seed, m.level);
             case "map":
@@ -161,17 +180,18 @@ class NcTrainLink {
         }
         var id:String;
         while ((id = NcSteam.request()) != null) {
+            NcLog.say("online training: Steam asked about a link from " + friendName(id) + ", state " + state);
             if (isFriend(id)) {
                 var accepted = NcSteam.accept(id);
                 heardFrom(id, "Steam's request, accepted " + accepted);
             } else {
                 NcSteam.close(id);
-                NcLog.say("online training: refused a link from someone not on your friends list");
+                NcLog.say("online training: refused a link from someone not on your friends list (" + friendCache.length + " friends known)");
             }
         }
         if (at - acceptedAt >= ACCEPT_MS) {
             acceptedAt = at;
-            for (f in friends(true)) if (NcSteam.accept(f.id)) heardFrom(f.id, "found by checking friends");
+            for (f in friends(true)) if (f.id != partner && NcSteam.accept(f.id)) heardFrom(f.id, "found by checking friends");
         }
         for (channel in [CONTROL, GAME]) {
             for (_ in 0...256) {
@@ -200,13 +220,36 @@ class NcTrainLink {
         }
     }
 
+    static function friendName(id:String):String {
+        for (f in friendCache) if (f.id == id) return f.name;
+        return "someone";
+    }
+
+    static function watchIncoming():Void {
+        for (id in heard.keys()) {
+            if (id == partner) continue;
+            var current = NcSteam.connection(id);
+            if (incoming.get(id) == current) continue;
+            incoming.set(id, current);
+            NcLog.say("online training: Steam link from " + friendName(id) + ": " + linkName(current) + " [" + NcSteam.link(id) + "]; " + NcSteam.status());
+        }
+    }
+
     static function watchLink():Void {
-        if (partner == null || udp != null) return;
+        if (udp != null) return;
+        watchIncoming();
+        if (partner == null) return;
         var current = NcSteam.connection(partner);
         if (current == linkState) return;
         linkState = current;
         if (current == LINK_CONNECTED) linkUp = true;
-        NcLog.say("online training: Steam link to " + partnerName + ": " + linkName(current));
+        var broken = current == LINK_CLOSED_BY_PEER || current == LINK_PROBLEM;
+        NcLog.say("online training: Steam link to " + partnerName + ": " + linkName(current)
+            + (broken ? " [" + NcSteam.link(partner) + "]; " + NcSteam.status() : ""));
+        if (broken && state == "inviting") {
+            say("Couldn't reach " + partnerName + ": they need the latest Official open");
+            reset();
+        }
     }
 
     public static function tick():Void {
@@ -224,6 +267,14 @@ class NcTrainLink {
             reset();
             autoDone = false;
         }
+        if (state == "accepting" && now() - joinedAt > JOIN_MS) {
+            say(partnerName + " didn't start the training: the invite may have expired");
+            reset();
+        }
+        var live = invites.filter(i -> now() - i.at < INVITE_MS);
+        if (live.length != invites.length) invites = live;
+        closeDue();
+        watchPauseMenu();
         if (state == "leaving") leaving();
         if (state == "running" && now() - startedAt > START_GRACE_MS && !bh.platform.OnlineTraining.active) {
             control({t: "bye"});
@@ -285,6 +336,7 @@ class NcTrainLink {
             reset();
             return;
         }
+        NcLog.say("online training: Steam at invite: " + (udp != null ? "local link" : NcSteam.status()));
         say("Invited " + name + " to online training");
     }
 
@@ -300,6 +352,7 @@ class NcTrainLink {
         partner = id;
         partnerName = from[0].name;
         state = "accepting";
+        joinedAt = now();
         var mine = PeerTraining.localRecords(null).filter((r:Dynamic) -> Std.int(r[0]) != 3);
         control({t: "accept", records: mine});
         say("Joining " + partnerName + "'s online training...");
@@ -308,9 +361,11 @@ class NcTrainLink {
     public static function decline(id:String):Void {
         invites = invites.filter(i -> i.id != id);
         control({t: "decline"}, id);
+        closeSoon(id);
     }
 
     public static function cancel():Void {
+        NcLog.say("online training: cancelled while " + state + " with " + partnerName);
         if (state == "inviting") control({t: "cancel"});
         reset();
     }
@@ -389,14 +444,50 @@ class NcTrainLink {
     }
 
     static function reset():Void {
+        if (partner != null && udp == null) NcLog.say("online training: closing the Steam link to " + partnerName + " [" + NcSteam.link(partner) + "]");
         if (P2PSession.pipe != null && !bh.platform.OnlineTraining.active) P2PSession.pipe = null;
-        if (partner != null && udp == null) NcSteam.close(partner);
+        if (partner != null) closeSoon(partner);
         state = "idle";
         partner = null;
         partnerName = "";
         linkState = -1;
         linkUp = false;
         heard = new Map();
+        incoming = new Map();
+        menuPaused = false;
+    }
+
+    static function pauseMenuOpened(core:Dynamic):Bool {
+        if (state != "running" || !TrainingSync.usable) return false;
+        if (!TrainingSync.paused) {
+            TrainingSync.pauseKey(core, "F7", 0);
+            menuPaused = TrainingSync.paused;
+            NcLog.say("online training: pause menu opened, " + (menuPaused ? "paused for both" : "the pause didn't take"));
+        }
+        return true;
+    }
+
+    static function watchPauseMenu():Void {
+        if (!menuPaused) return;
+        var menu:Dynamic = ScreenManager.var_4794;
+        if (menu != null && menu.isActive) return;
+        menuPaused = false;
+        if (state != "running" || !TrainingSync.usable || !TrainingSync.paused) return;
+        var app:Dynamic = GameApp.mainInstance;
+        TrainingSync.pauseKey(app.game, "F7", 0);
+        NcLog.say("online training: pause menu closed, playing again");
+    }
+
+    static function closeSoon(id:String):Void {
+        if (udp == null) closing.set(id, now() + CLOSE_MS);
+    }
+
+    static function closeDue():Void {
+        var due = [for (id => at in closing) if (now() >= at) id];
+        for (id in due) {
+            closing.remove(id);
+            if (id != partner) NcSteam.close(id);
+        }
     }
 
     static function say(text:String):Void {

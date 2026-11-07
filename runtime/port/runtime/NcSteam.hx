@@ -27,6 +27,18 @@ class NcSteam {
         if (open()) Native.steam_pump();
     }
 
+    public static function status():String {
+        if (!open()) return "unavailable";
+        var n = 0;
+        return text(Native.steam_status(n), n);
+    }
+
+    public static function link(id:String):String {
+        if (!open()) return "unavailable";
+        var n = 0;
+        return text(Native.steam_link(cstr(id), n), n);
+    }
+
     public static function me():{id:String, name:String} {
         if (!open()) return null;
         var n = 0;
@@ -92,6 +104,8 @@ class NcSteam {
 private extern class Native {
     static function steam_open():Int;
     static function steam_pump():Void;
+    static function steam_status(outLength:hl.Ref<Int>):hl.Bytes;
+    static function steam_link(id:hl.Bytes, outLength:hl.Ref<Int>):hl.Bytes;
     static function steam_me(outLength:hl.Ref<Int>):hl.Bytes;
     static function steam_friends(outLength:hl.Ref<Int>):hl.Bytes;
     static function steam_send(id:hl.Bytes, data:hl.Bytes, length:Int, channel:Int, reliable:Bool):Int;

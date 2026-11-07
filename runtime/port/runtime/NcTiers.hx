@@ -52,7 +52,7 @@ class NcTiers {
     public static function toNext(rating:Int):String {
         var mine = name(rating);
         for (v in thresholds()) if (v > rating && name(v) != mine) return (v - rating) + " TO " + name(v);
-        return "TOP RANK";
+        return "";
     }
 
     public static function part(rating:Int):Float {

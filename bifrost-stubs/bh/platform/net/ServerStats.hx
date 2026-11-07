@@ -12,11 +12,7 @@ class ServerStats {
             var ladder = parts[1];
             var watching = spectating();
             var user:UInt = parts.length > 2 ? Std.parseInt(parts[2]) : watching ? lobbyLead(core) : core.var_14871;
-            if (ladder == "team") return null;
-            if (ladder == "2v2" && parts.length == 2 && !watching) {
-                var team:Dynamic = teamCard(core);
-                if (team != null) return team;
-            }
+            if (ladder == "team") return parts.length == 3 && !watching ? teamCard(core, core.var_14871, user) : null;
             return card(core, ladder == "2v2" ? Class_309.PLAYLIST_RANKED2V2 : Class_309.PLAYLIST_RANKED1V1, user);
         } catch (_:Dynamic) {
             return null;
@@ -56,29 +52,52 @@ class ServerStats {
         return core.var_11558.method_4997("e" + playlist.var_4137 + "u" + user);
     }
 
-    static function teamCard(core:Dynamic):Dynamic {
-        var playlist:Dynamic = core.var_6336 != null ? core.var_6336.var_2424 : null;
-        var r:Dynamic = playlist != null && playlist.var_9262 && playlist.var_14727 ? core.var_13878 : null;
-        if (r == null) return null;
-        var rating = Std.int(r.var_7356);
-        var latest = port.runtime.NcRanked.knownRating("team");
-        var games = Std.int(r.var_7328);
-        if (port.runtime.NcRanked.knownGames("team") > games && latest > 0) {
-            rating = latest;
-            games = port.runtime.NcRanked.knownGames("team");
-        }
-        port.runtime.NcTiers.protect(Std.int(r.var_7356), Std.int(r.starRating));
+    public static function teamKey(a:UInt, b:UInt):String {
+        return a < b ? "team:" + a + "-" + b : "team:" + b + "-" + a;
+    }
+
+    public static function lobbyTeam(core:Dynamic):String {
+        if (core == null) return null;
+        var people = lobbyPeople(core);
+        var me:UInt = port.runtime.As3.toUInt(core.var_14871);
+        if (people.length != 2 || people.indexOf(me) < 0 || people[0] == people[1]) return null;
+        return teamKey(people[0], people[1]);
+    }
+
+    static function teamRow(core:Dynamic, playlist:Dynamic, a:UInt, b:UInt):Dynamic {
+        var r:Dynamic = core.method_4569(a, b, port.runtime.As3.toUInt(playlist.var_4137));
+        if (r != null) return r;
+        var latest:Dynamic = core.var_13878;
+        if (latest == null || port.runtime.As3.toUInt(latest.var_11782) != port.runtime.As3.toUInt(playlist.var_4137)) return null;
+        var x:UInt = port.runtime.As3.toUInt(latest.var_12279);
+        var y:UInt = port.runtime.As3.toUInt(latest.var_11749);
+        return x == a && y == b || x == b && y == a ? latest : null;
+    }
+
+    static function teamCard(core:Dynamic, me:UInt, mate:UInt):Dynamic {
+        var playlist:Dynamic = Class_309.PLAYLIST_RANKED2V2;
+        if (playlist == null || me == 0 || mate == 0 || me == mate) return null;
+        var key = teamKey(me, mate);
+        var r:Dynamic = teamRow(core, playlist, me, mate);
+        var rating = r != null ? Std.int(r.var_7356) : 0;
+        var games = r != null ? Std.int(r.var_7328) : 0;
+        var known = port.runtime.NcRanked.knownGames(key);
+        var latest = port.runtime.NcRanked.knownRating(key);
+        if (known > games && latest > 0) rating = latest;
+        if (known > games) games = known;
+        if (r != null) port.runtime.NcTiers.protect(Std.int(r.var_7356), Std.int(r.starRating));
         return {
+            team: true,
             rating: rating,
-            stars: rating != Std.int(r.var_7356) ? port.runtime.NcTiers.stars(rating) : Std.int(r.starRating),
+            stars: r != null && rating == Std.int(r.var_7356) ? Std.int(r.starRating) : rating > 0 ? port.runtime.NcTiers.stars(rating) : 0,
             games: games,
-            wins: Std.int(r.var_9108),
-            peak: Std.int(r.var_1839),
-            rank: Std.int(r.var_4739),
+            wins: r != null ? Std.int(r.var_9108) : 0,
+            peak: r != null ? Std.int(r.var_1839) : 0,
+            rank: r != null ? Std.int(r.var_4739) : 0,
             placement: Std.int(playlist.var_7390) > 0 ? Std.int(playlist.var_7390) : 10,
             season: Class_55.var_1988 > 0 ? Std.int(Class_55.var_1988) : null,
             ladder: "2v2",
-            last: port.runtime.NcRanked.recent("team"),
+            last: port.runtime.NcRanked.recent(key),
             legend: null
         };
     }
