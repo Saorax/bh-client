@@ -50,11 +50,12 @@ typedef void (*SetIdFn)(SteamIdentity *, uint64_t);
 typedef int (*SendFn)(void *, const SteamIdentity *, const void *, uint32_t, int, int);
 typedef int (*ReceiveFn)(void *, int, SteamMessage **, int);
 typedef void (*ReleaseFn)(SteamMessage *);
-typedef int (*SessionFn)(void *, const SteamIdentity *);
+typedef bool (*SessionFn)(void *, const SteamIdentity *);
 typedef int (*SessionInfoFn)(void *, const SteamIdentity *, void *, void *);
 typedef void (*RequestCallback)(void *);
-typedef int (*SetCallbackFn)(void *, RequestCallback);
+typedef bool (*SetCallbackFn)(void *, RequestCallback);
 typedef void (*RelayFn)(void *);
+typedef void (*RunCallbacksFn)(void *);
 typedef int (*FriendCountFn)(void *, int);
 typedef uint64_t (*FriendByIndexFn)(void *, int, int);
 typedef const char *(*FriendNameFn)(void *, uint64_t);
@@ -67,7 +68,8 @@ typedef int (*ImageSizeFn)(void *, int, uint32_t *, uint32_t *);
 typedef int (*ImageRgbaFn)(void *, int, uint8_t *, int);
 typedef int (*PersonaStateFn)(void *, uint64_t);
 
-static void *messages, *friends, *user, *utils, *steam_utils;
+static void *messages, *friends, *user, *utils, *steam_utils, *sockets;
+static RunCallbacksFn run_callbacks;
 static SetIdFn set_id;
 static SendFn send_to;
 static ReceiveFn receive_on;
@@ -117,6 +119,7 @@ HL_PRIM int HL_NAME(steam_open)(void) {
     HMODULE api;
     SetCallbackFn set_callback;
     RelayFn relay;
+    AccessorFn sockets_accessor;
     if (opened) return opened;
     api = GetModuleHandleW(L"steam_api64.dll");
     if (api == NULL) return opened = -1;
@@ -152,8 +155,15 @@ HL_PRIM int HL_NAME(steam_open)(void) {
         !request_info || !image_size || !image_rgba || !persona_state)
         return opened = -2;
     if (!set_callback(utils, on_request)) return opened = -3;
+    sockets_accessor = (AccessorFn)GetProcAddress(api, "SteamAPI_SteamNetworkingSockets_SteamAPI_v012");
+    sockets = sockets_accessor ? sockets_accessor() : NULL;
+    run_callbacks = (RunCallbacksFn)GetProcAddress(api, "SteamAPI_ISteamNetworkingSockets_RunCallbacks");
     relay(utils);
     return opened = 1;
+}
+
+HL_PRIM void HL_NAME(steam_pump)(void) {
+    if (opened == 1 && sockets && run_callbacks) run_callbacks(sockets);
 }
 
 HL_PRIM vbyte *HL_NAME(steam_me)(int *out_length) {
@@ -261,6 +271,7 @@ HL_PRIM vbyte *HL_NAME(steam_avatar)(vbyte *id, int *out_width, int *out_height)
 }
 
 DEFINE_PRIM(_I32, steam_open, _NO_ARG);
+DEFINE_PRIM(_VOID, steam_pump, _NO_ARG);
 DEFINE_PRIM(_BYTES, steam_avatar, _BYTES _REF(_I32) _REF(_I32));
 DEFINE_PRIM(_BYTES, steam_me, _REF(_I32));
 DEFINE_PRIM(_BYTES, steam_friends, _REF(_I32));

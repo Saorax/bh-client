@@ -1,6 +1,8 @@
 package bh.platform.net;
 
 class ServerStats {
+    static inline var HUMAN = 2;
+
     public static function get(query:String):Dynamic {
         try {
             var core:Dynamic = ScreenManager.owner;
@@ -23,13 +25,30 @@ class ServerStats {
 
     public static function spectating():Bool {
         var core:Dynamic = ScreenManager.owner;
-        return core != null && core.method_809();
+        if (core == null) return false;
+        var flags = port.runtime.As3.toInt(core.var_3645);
+        if ((flags & 32) != 0) flags = port.runtime.As3.toInt(core.var_13785);
+        if ((flags & (262144 | 524288)) != 0) return true;
+        var people = lobbyPeople(core);
+        return people.length > 0 && people.indexOf(port.runtime.As3.toUInt(core.var_14871)) < 0;
+    }
+
+    static function lobbyPeople(core:Dynamic):Array<UInt> {
+        var out:Array<UInt> = [];
+        var members:Dynamic = core.var_6336 != null ? core.var_6336.var_1780 : null;
+        if (members == null) return out;
+        for (i in 0...port.runtime.As3.toInt(port.runtime.As3.getProp(members, "length"))) {
+            var member:Dynamic = port.runtime.As3.index(members, i);
+            if (member == null || port.runtime.As3.toInt(member.var_12698) != HUMAN) continue;
+            var id:UInt = port.runtime.As3.toUInt(member.var_14871);
+            if (id != 0) out.push(id);
+        }
+        return out;
     }
 
     static function lobbyLead(core:Dynamic):UInt {
-        var members:Dynamic = core.var_6336 != null ? core.var_6336.var_1780 : null;
-        if (members == null || port.runtime.As3.toInt(port.runtime.As3.getProp(members, "length")) < 1) return 0;
-        return port.runtime.As3.toUInt(port.runtime.As3.index(members, 0).var_14871);
+        var people = lobbyPeople(core);
+        return people.length > 0 ? people[0] : 0;
     }
 
     public static function row(core:Dynamic, playlist:Dynamic, user:UInt):Dynamic {

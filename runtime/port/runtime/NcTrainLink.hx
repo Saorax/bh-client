@@ -11,6 +11,10 @@ class NcTrainLink {
     static inline var PROTOCOL = 1;
     static inline var INVITE_MS = 30000.0;
     static inline var START_GRACE_MS = 5000.0;
+    static inline var PUMP_MS = 100.0;
+    static inline var ACCEPT_MS = 1000.0;
+    static inline var STEAM_OK = 1;
+    static inline var LINK_CONNECTED = 3;
 
     static var opened = false;
     static var udp:sys.net.UdpSocket = null;
@@ -28,6 +32,11 @@ class NcTrainLink {
     static var friendCache:Array<{id:String, name:String, playing:Bool, online:Bool}> = [];
     static var friendsAt = -1e9;
     static var note = "";
+    static var pumpedAt = -1e9;
+    static var acceptedAt = -1e9;
+    static var linkState = -1;
+    static var linkUp = false;
+    static var heard:Map<String, Bool> = new Map();
 
     static function now():Float {
         return haxe.Timer.stamp() * 1000;
@@ -58,24 +67,26 @@ class NcTrainLink {
         }
     }
 
-    static function sendRaw(channel:Int, data:haxe.io.Bytes):Void {
-        if (partner == null) return;
+    static function sendRaw(channel:Int, data:haxe.io.Bytes):Int {
+        if (partner == null) return -1;
         if (udp != null) {
             var out = haxe.io.Bytes.alloc(data.length + 1);
             out.set(0, channel);
             out.blit(1, data, 0, data.length);
             try udp.sendTo(out, 0, out.length, udpPeer) catch (_:Dynamic) {}
-        } else {
-            NcSteam.send(partner, data, channel, channel == CONTROL);
+            return STEAM_OK;
         }
+        return NcSteam.send(partner, data, channel, channel == CONTROL);
     }
 
-    static function control(message:Dynamic, ?to:String):Void {
+    static function control(message:Dynamic, ?to:String):Int {
         var keep = partner;
         if (to != null) partner = to;
         message.v = PROTOCOL;
-        sendRaw(CONTROL, haxe.io.Bytes.ofString(haxe.Json.stringify(message)));
+        var result = sendRaw(CONTROL, haxe.io.Bytes.ofString(haxe.Json.stringify(message)));
+        if (result != STEAM_OK) NcLog.say("online training: sending " + message.t + " failed, Steam result " + result);
         partner = keep;
+        return result;
     }
 
     static function received(from:String, channel:Int, data:haxe.io.Bytes):Void {
@@ -142,9 +153,25 @@ class NcTrainLink {
             return;
         }
         if (!NcSteam.open()) return;
+        var at = now();
+        if (at - pumpedAt >= PUMP_MS) {
+            pumpedAt = at;
+            NcSteam.pump();
+            watchLink();
+        }
         var id:String;
         while ((id = NcSteam.request()) != null) {
-            if (isFriend(id)) NcSteam.accept(id) else NcSteam.close(id);
+            if (isFriend(id)) {
+                var accepted = NcSteam.accept(id);
+                heardFrom(id, "Steam's request, accepted " + accepted);
+            } else {
+                NcSteam.close(id);
+                NcLog.say("online training: refused a link from someone not on your friends list");
+            }
+        }
+        if (at - acceptedAt >= ACCEPT_MS) {
+            acceptedAt = at;
+            for (f in friends(true)) if (NcSteam.accept(f.id)) heardFrom(f.id, "found by checking friends");
         }
         for (channel in [CONTROL, GAME]) {
             for (_ in 0...256) {
@@ -153,6 +180,33 @@ class NcTrainLink {
                 received(m.from, channel, m.data);
             }
         }
+    }
+
+    static function heardFrom(id:String, how:String):Void {
+        if (heard.exists(id)) return;
+        heard.set(id, true);
+        for (f in friendCache) if (f.id == id) NcLog.say("online training: Steam link from " + f.name + " (" + how + ")");
+    }
+
+    static function linkName(state:Int):String {
+        return switch (state) {
+            case 0: "none";
+            case 1: "connecting";
+            case 2: "finding a route";
+            case 3: "connected";
+            case 4: "closed by them";
+            case 5: "problem on this PC";
+            default: "state " + state;
+        }
+    }
+
+    static function watchLink():Void {
+        if (partner == null || udp != null) return;
+        var current = NcSteam.connection(partner);
+        if (current == linkState) return;
+        linkState = current;
+        if (current == LINK_CONNECTED) linkUp = true;
+        NcLog.say("online training: Steam link to " + partnerName + ": " + linkName(current));
     }
 
     public static function tick():Void {
@@ -164,7 +218,8 @@ class NcTrainLink {
         if (state == "idle") PeerTraining.stopIfIdle();
         try poll() catch (e:Dynamic) NcLog.say("online training: " + e);
         if (state == "inviting" && now() - invitedAt > INVITE_MS) {
-            say(partnerName + " didn't answer");
+            say(udp != null || linkUp ? partnerName + " didn't answer"
+                : "Couldn't reach " + partnerName + ": they need Official open, on the same version");
             control({t: "cancel"});
             reset();
             autoDone = false;
@@ -224,7 +279,12 @@ class NcTrainLink {
         partnerName = name;
         state = "inviting";
         invitedAt = now();
-        control({t: "invite", name: myName()});
+        var sent = control({t: "invite", name: myName()});
+        if (sent != STEAM_OK) {
+            say("Couldn't send the invite to " + name + " (Steam result " + sent + ")");
+            reset();
+            return;
+        }
         say("Invited " + name + " to online training");
     }
 
@@ -334,6 +394,9 @@ class NcTrainLink {
         state = "idle";
         partner = null;
         partnerName = "";
+        linkState = -1;
+        linkUp = false;
+        heard = new Map();
     }
 
     static function say(text:String):Void {

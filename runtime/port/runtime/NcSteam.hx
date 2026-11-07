@@ -23,6 +23,10 @@ class NcSteam {
         return b == null ? null : b.toBytes(length).getString(0, length);
     }
 
+    public static function pump():Void {
+        if (open()) Native.steam_pump();
+    }
+
     public static function me():{id:String, name:String} {
         if (!open()) return null;
         var n = 0;
@@ -87,6 +91,7 @@ class NcSteam {
 @:hlNative("ncane")
 private extern class Native {
     static function steam_open():Int;
+    static function steam_pump():Void;
     static function steam_me(outLength:hl.Ref<Int>):hl.Bytes;
     static function steam_friends(outLength:hl.Ref<Int>):hl.Bytes;
     static function steam_send(id:hl.Bytes, data:hl.Bytes, length:Int, channel:Int, reliable:Bool):Int;
