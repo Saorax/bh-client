@@ -57,7 +57,6 @@ ENGINE_PATCHES = [
      "\t\tif (system && isText(format)) return hxd.System.setClipboardText(data == null ? \"\" : Std.string(data));\n"),
     ("flash/desktop/ClipboardFormats.hx", "ClipboardFormats return cast -1;\n", "ClipboardFormats return cast \"air:bitmap\";\n"),
     ("flash/net/Socket.hx", "        return Std.int(input().readUnsignedInt());\n", "        return input().readInt();\n"),
-    ("flash/net/Socket.hx", "        pumping = tcp.connected;\n", "        pumping = tcp.connected || tcp.connecting;\n"),
     ("openfl/net/URLLoader.hx", "\tpublic function run():HttpResult {\n\t\tvar result = new HttpResult(url);\n",
      "\tvar redirect:Null<String> = null;\n\n\tpublic function run():HttpResult {\n\t\tvar result = attempt();\n"
      "\t\tfor (_ in 0...5) {\n\t\t\tif (result.status < 300 || result.status >= 400 || redirect == null) break;\n"
