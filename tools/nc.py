@@ -159,7 +159,8 @@ def build(args: argparse.Namespace) -> int:
     except nc_layer.LayerError as e:
         print(f"nc_layer: {e}")
         return 1
-    jobs = {renderer: subprocess.Popen([str(haxe), f"build-official-{renderer}.hxml"], cwd=ENGINE,
+    haxe_env = dict(os.environ, HAXE_STD_PATH="tools/haxe/std")
+    jobs = {renderer: subprocess.Popen([str(haxe), f"build-official-{renderer}.hxml"], cwd=ENGINE, env=haxe_env,
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             for renderer in nc_layer.RENDERERS}
     failed = 0
@@ -191,13 +192,9 @@ def run(args: argparse.Namespace) -> int:
         env["BH_PORT_SHOTS"] = ",".join(f"{(shots / f'frame-{frame}.png').as_posix()}@{frame}" for frame in args.shots)
     game_args = list(args.game_args)
     if args.offline:
-        env["NC_OFFLINE"] = "1"
         game_args.insert(0, "-forceoffline")
     bin_dir = ENGINE / "bin"
-    exe = bin_dir / "Brawlhalla.exe"
-    hl = bin_dir / "hl.exe"
-    if hl.exists() and (not exe.exists() or exe.stat().st_mtime < hl.stat().st_mtime):
-        shutil.copy2(hl, exe)
+    exe = bin_dir / "hl.exe"
     if args.view:
         env["BH_NC_VIEW"] = str(Path(args.view).resolve())
     command = [str(exe), str(ENGINE / "official" / f"game-{args.renderer}.hl"), *game_args]

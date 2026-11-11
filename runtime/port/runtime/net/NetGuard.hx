@@ -7,7 +7,7 @@ class NetGuard {
 
     public static inline var CONFIG_NAME = "new-client.json";
 
-    public static var offline:Bool = #if sys Sys.getEnv("NC_OFFLINE") == "1" #else false #end;
+    public static final offline:Bool = true;
 
     public static function hasEndpoint():Bool {
         return false;

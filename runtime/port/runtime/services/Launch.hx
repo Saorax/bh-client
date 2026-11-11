@@ -15,12 +15,9 @@ class Launch {
     }
 
     public static function arguments():Array<String> {
-        if (argv != null) return argv.copy();
-        #if sys
-        return Sys.args();
-        #else
-        return [];
-        #end
+        var args:Array<String> = argv != null ? argv.copy() : #if sys Sys.args() #else [] #end;
+        if (args.indexOf("-forceoffline") < 0) args.unshift("-forceoffline");
+        return args;
     }
 
     public static function applicationDirectory():String {

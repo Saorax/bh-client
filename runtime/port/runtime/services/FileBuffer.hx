@@ -37,7 +37,7 @@ class FileBuffer extends DataBuffer {
 
     function load(mustExist:Bool):Void {
         if (Files.exists(path) && !Files.isDirectory(path)) {
-            var bytes = Files.readBytes(path);
+            var bytes = try Files.readBytes(path) catch (e:ServiceError) throw e catch (e:Dynamic) throw new ServiceError(2038, "File I/O Error.");
             data = Bytes.alloc(bytes.length > 256 ? bytes.length : 256);
             data.blit(0, bytes, 0, bytes.length);
             len = bytes.length;
@@ -82,7 +82,7 @@ class FileBuffer extends DataBuffer {
 
     public function flush():Void {
         if (dirty && mode != READ) {
-            Files.writeBytes(path, data.sub(0, len));
+            try Files.writeBytes(path, data.sub(0, len)) catch (e:ServiceError) throw e catch (e:Dynamic) throw new ServiceError(2038, "File I/O Error.");
             dirty = false;
         }
     }

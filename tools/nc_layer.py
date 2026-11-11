@@ -70,6 +70,8 @@ ENGINE_PATCHES = [
 
 PREVIEW_START = "      public function method_1738():Void\n      {\n"
 CLEAR_START = "      override public function OnClearScreen():Void\n      {\n"
+STATS_WRITE = ("      public function method_6530(param1:Dynamic, param2:String, param3:String = null, param4:Bool = false):Void\n"
+               "      {\n")
 
 GAME_PATCHES = [
     ("HttpCall.hx",
@@ -87,6 +89,7 @@ GAME_PATCHES = [
     ("GameApp.hx", "         port.runtime.As3.nativeWindow(_loc4_).width = param1;\n"
      "         port.runtime.As3.nativeWindow(_loc4_).height = param2;\n",
      "         port.runtime.NcWindow.resize(param1,param2);\n"),
+    ("Class_175.hx", STATS_WRITE, STATS_WRITE + "         if(!GameApp.var_7612) return;\n"),
 ]
 
 
