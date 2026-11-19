@@ -25,13 +25,13 @@ class Platform {
     public static function live(core:Dynamic):Bool {
         if (core == null) return false;
         var state:UInt = core.gameState;
-        var flags:UInt = core.var_3645;
+        var flags:UInt = core.mGameState;
         return runningIn(state, flags) && !(state == MATCH_RUNNING && (flags & ONLINE_LOADING) != 0);
     }
 
     static function onGameStateChanging(from:UInt, to:UInt):Void {
         var core:Dynamic = ScreenManager.owner;
-        var flags:UInt = core != null ? core.var_3645 : 0;
+        var flags:UInt = core != null ? core.mGameState : 0;
         var was = matchRunning;
         matchRunning = runningIn(to, flags);
         if (matchRunning && !was) Hooks.matchStarted.fire();

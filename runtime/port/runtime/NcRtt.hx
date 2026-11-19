@@ -1,13 +1,13 @@
 package port.runtime;
 
-class NcRtt implements Class_225 {
+class NcRtt implements Class_223 {
     static inline var KEPT = 5;
     static var samples:Array<Float> = [];
     static var lastAt:Float = 0;
 
-    var inner:Class_225;
+    var inner:Class_223;
 
-    function new(inner:Class_225) {
+    function new(inner:Class_223) {
         this.inner = inner;
     }
 
@@ -15,8 +15,8 @@ class NcRtt implements Class_225 {
         bh.platform.Hooks.frameStarting.add(function():Void {
             var core:Dynamic = ScreenManager.owner;
             if (core == null) return;
-            var current:Class_225 = core.var_5919;
-            if (current != null && !Std.isOfType(current, NcRtt)) core.var_5919 = new NcRtt(current);
+            var current:Class_223 = core.mRecentInputBuckets;
+            if (current != null && !Std.isOfType(current, NcRtt)) core.mRecentInputBuckets = new NcRtt(current);
         });
     }
 
@@ -32,18 +32,18 @@ class NcRtt implements Class_225 {
         inner.Reset();
     }
 
-    public function method_2913():UInt {
-        return inner.method_2913();
+    public function method_2931():UInt {
+        return inner.method_2931();
     }
 
-    public function method_6423():UInt {
-        return inner.method_6423();
+    public function method_6479():UInt {
+        return inner.method_6479();
     }
 
-    public function method_4356(param1:UInt):Void {
+    public function method_4392(param1:UInt):Void {
         samples.push(param1);
         if (samples.length > KEPT) samples.shift();
         lastAt = haxe.Timer.stamp();
-        inner.method_4356(param1);
+        inner.method_4392(param1);
     }
 }

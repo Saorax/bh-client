@@ -36,6 +36,6 @@ class NcOverlay {
         if (++videoFrames < 1500) return;
         videoFrames = -1;
         NcLog.say("video test: " + url);
-        Class_747.method_3990(new Class_748(url));
+        Class_753.method_4022(new Class_754(url));
     }
 }

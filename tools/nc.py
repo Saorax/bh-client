@@ -1,6 +1,6 @@
 """new-client: the raw game on the port's new engine, on the official servers.
 
-    python tools/nc.py export            # the port's raw 11.00.49 game and Heaps engine -> build/, with our layer
+    python tools/nc.py export            # the port's raw 11.01 game and Heaps engine -> build/, with our layer
     python tools/nc.py build             # compile the official game (dx11, dx12) -> build/engine/official
     python tools/nc.py run --game DIR [--offline] [--view DIR] [--seconds N] [--shots FRAME...] [-- GAME ARGS...]
     python tools/nc.py check             # the port files our runtime shadows
@@ -32,7 +32,7 @@ GAME_SRC = BUILD / "raw-game" / "src"
 RUNTIME = ROOT / "runtime"
 NATIVE = ROOT / "native"
 SHADOWS = RUNTIME / "shadows.json"
-VERSION = "11.00.49"
+VERSION = "11.01"
 STEAM_APP_ID = "291550"
 
 def port_root() -> Path:

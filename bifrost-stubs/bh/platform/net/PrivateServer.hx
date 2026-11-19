@@ -8,6 +8,8 @@ class PrivateServer {
     public static var p2pSmoothingMs:Float = 100;
     public static var p2pRollback:Bool = true;
     public static var p2pDelaySet:Bool = false;
+    public static var p2pTurn:Bool = false;
+    public static var p2pTurnAlways:Bool = false;
 
     public static function log(line:String, now:Bool = false):Void {
         bh.platform.Platform.log(line);

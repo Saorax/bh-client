@@ -12,31 +12,31 @@ class NcRanked {
     static var played:Dynamic = {};
     static var ticks = 0;
 
-    public static function preview(screen:Dynamic, core:GameCore, info:Class_275, size:Int):Void {
+    public static function preview(screen:Dynamic, core:GameCore, info:MatchPreviewCard, size:Int):Void {
         try {
-            if (screen == null || core == null || info == null || info.var_9616 == null) return;
-            var playlist:Dynamic = size > 1 ? Class_309.PLAYLIST_RANKED2V2 : Class_309.PLAYLIST_RANKED1V1;
+            if (screen == null || core == null || info == null || info.playerList == null) return;
+            var playlist:Dynamic = size > 1 ? PlaylistType.PLAYLIST_RANKED2V2 : PlaylistType.PLAYLIST_RANKED1V1;
             var ladder = size > 1 ? "2v2" : "1v1";
-            var me:UInt = core.var_14871;
-            var players:Array<Class_276> = [for (i in 0...info.var_9616.length) if (info.var_9616[i] != null) info.var_9616[i]];
+            var me:UInt = core.var_14927;
+            var players:Array<MatchPreviewPlayer> = [for (i in 0...info.playerList.length) if (info.playerList[i] != null) info.playerList[i]];
             var myTeam:Int = -1;
-            for (p in players) if (p.var_12279 == me) myTeam = Std.int(p.team);
-            var ours = [for (p in players) if (size > 1 ? Std.int(p.team) == myTeam : p.var_12279 == me) Std.int(p.var_7356)];
-            var theirs = [for (p in players) if (size > 1 ? Std.int(p.team) != myTeam : p.var_12279 != me) Std.int(p.var_7356)];
+            for (p in players) if (p.userID == me) myTeam = Std.int(p.team);
+            var ours = [for (p in players) if (size > 1 ? Std.int(p.team) == myTeam : p.userID == me) Std.int(p.eloRating)];
+            var theirs = [for (p in players) if (size > 1 ? Std.int(p.team) != myTeam : p.userID != me) Std.int(p.eloRating)];
             var mine:Dynamic = ServerStats.card(core, playlist, me);
-            var total = Std.int(playlist.var_7390) > 0 ? Std.int(playlist.var_7390) : 10;
+            var total = Std.int(playlist.mPlacementGames) > 0 ? Std.int(playlist.mPlacementGames) : 10;
             var myGames = mine != null ? Std.int(mine.games) : total;
             gain = loss = 0;
             if (ours.length > 0 && theirs.length > 0) project(average(ours), average(theirs), myGames < total);
             RatingTags.reset();
             for (p in players) {
-                var id:UInt = p.var_12279;
-                var elo = Std.int(p.var_7356);
+                var id:UInt = p.userID;
+                var elo = Std.int(p.eloRating);
                 var own = id == me;
                 var personal:Dynamic = size > 1 ? (own ? mine : ServerStats.card(core, playlist, id)) : null;
                 if (size > 1 && own && personal == null && savedRating() > 0) personal = {rating: savedRating()};
-                if (size > 1) NcLog.say("ranked preview: player " + id + (own ? " (you)" : "") + ", team " + p.team + ", ratings " + p.var_7356 + "/"
-                    + p.var_2078 + ", personal " + (personal != null ? Std.string(personal.rating) : "none"));
+                if (size > 1) NcLog.say("ranked preview: player " + id + (own ? " (you)" : "") + ", team " + p.team + ", ratings " + p.eloRating + "/"
+                    + p.var_2084 + ", personal " + (personal != null ? Std.string(personal.rating) : "none"));
                 if (personal != null && Std.int(personal.rating) > 0) elo = Std.int(personal.rating);
                 var card:Dynamic;
                 if (own) {
@@ -56,25 +56,25 @@ class NcRanked {
                 Reflect.setField(RatingTags.before, Std.string(id), before);
                 Reflect.setField(RatingTags.cards, Std.string(id), card);
             }
-            var playing = Lambda.exists(players, p -> p.var_12279 == me);
+            var playing = Lambda.exists(players, p -> p.userID == me);
             if (size == 1) {
                 var first:UInt = me;
                 var them:UInt = 0;
                 if (!playing && players.length > 1) {
-                    first = players[1].var_12279;
-                    them = players[0].var_12279;
+                    first = players[1].userID;
+                    them = players[0].userID;
                 } else {
-                    for (p in players) if (p.var_12279 != me) them = p.var_12279;
+                    for (p in players) if (p.userID != me) them = p.userID;
                 }
-                RatingTags.preview([[screen.mPlayerPreview1.var_4550, first], [screen.mPlayerPreview2.var_4550, them]]);
+                RatingTags.preview([[screen.mPlayerPreview1.mComponentMovieClip, first], [screen.mPlayerPreview2.mComponentMovieClip, them]]);
             } else {
-                var lead:UInt = !playing && players.length > 0 ? players[0].var_12279 : me;
+                var lead:UInt = !playing && players.length > 0 ? players[0].userID : me;
                 var leadTeam = !playing && players.length > 0 ? Std.int(players[0].team) : myTeam;
                 var order:Array<UInt> = [lead];
-                for (p in players) if (p.var_12279 != lead && Std.int(p.team) == leadTeam) order.push(p.var_12279);
-                for (p in players) if (Std.int(p.team) != leadTeam) order.push(p.var_12279);
+                for (p in players) if (p.userID != lead && Std.int(p.team) == leadTeam) order.push(p.userID);
+                for (p in players) if (Std.int(p.team) != leadTeam) order.push(p.userID);
                 var previews:Array<Dynamic> = [screen.mPlayerPreview1, screen.mPlayerPreview2, screen.mPlayerPreview3, screen.mPlayerPreview4];
-                RatingTags.preview([for (i in 0...Std.int(Math.min(order.length, 4))) [previews[i].var_4550, order[i]]]);
+                RatingTags.preview([for (i in 0...Std.int(Math.min(order.length, 4))) [previews[i].mComponentMovieClip, order[i]]]);
             }
         } catch (error:Dynamic) {
             NcLog.say("ranked preview: " + Std.string(error));
@@ -87,26 +87,26 @@ class NcRanked {
 
     public static function after(playlist:Dynamic, result:Dynamic):Void {
         try {
-            if (playlist == null || result == null || !playlist.var_9262) return;
+            if (playlist == null || result == null || !playlist.mbRanked) return;
             var core:Dynamic = ScreenManager.owner;
-            var duo = playlist == Class_309.PLAYLIST_RANKED2V2 || playlist.var_14727 || playlist.var_9243;
+            var duo = playlist == PlaylistType.PLAYLIST_RANKED2V2 || playlist.var_14783 || playlist.var_9275;
             var ladder = duo ? "2v2" : "1v1";
-            var personal = [Std.int(result.var_14980), Std.int(result.var_5590), Std.int(result.var_4768)];
-            var team = [Std.int(result.var_15318), Std.int(result.var_8733), Std.int(result.var_5271)];
-            NcTiers.protect(personal[0], Std.int(result.var_4320));
-            NcTiers.protect(personal[1], Std.int(result.var_7833));
-            NcTiers.protect(team[0], Std.int(result.var_8104));
-            NcTiers.protect(team[1], Std.int(result.var_4688));
-            var card = core != null ? ownCard(core.var_14871) : 0;
+            var personal = [Std.int(result.mOldElo), Std.int(result.mNewElo), Std.int(result.mGames)];
+            var team = [Std.int(result.mOldTeamElo), Std.int(result.mNewTeamElo), Std.int(result.var_5282)];
+            NcTiers.protect(personal[0], Std.int(result.mNewStarRating));
+            NcTiers.protect(personal[1], Std.int(result.mOldStarRating));
+            NcTiers.protect(team[0], Std.int(result.mNewTeamStarRating));
+            NcTiers.protect(team[1], Std.int(result.mOldTeamStarRating));
+            var card = core != null ? ownCard(core.var_14927) : 0;
             var mine = personal, other = duo ? team : null;
             if (duo && (card > 0 && team[1] == card && personal[1] != card || card <= 0 && personal[1] <= 0)) {
                 mine = team;
                 other = personal;
             }
             NcLog.say("ranked result: " + ladder + ", personal " + personal.join("/") + ", team " + team.join("/") + ", scoreboard "
-                + card + ", playlist team " + playlist.var_14727 + "/" + playlist.var_9243);
+                + card + ", playlist team " + playlist.var_14783 + "/" + playlist.var_9275);
             var games = mine[2];
-            var total = Std.int(playlist.var_7390);
+            var total = Std.int(playlist.mPlacementGames);
             var before = mine[0];
             var now = mine[1];
             var placing = total > 0 && games < total;
@@ -122,7 +122,7 @@ class NcRanked {
                 return;
             }
             if (!placing && before > 0 && core != null)
-                Reflect.setField(RatingTags.after, Std.string(core.var_14871), [before, now, stars(now)]);
+                Reflect.setField(RatingTags.after, Std.string(core.var_14927), [before, now, stars(now)]);
             var change:Dynamic = {
                 before: placing || before <= 0 ? now : before,
                 after: now,
@@ -132,7 +132,7 @@ class NcRanked {
                 last: results(ladder)
             };
             if (other != null && other[1] > 0 && other[1] != now) change.team = {before: other[0] > 0 ? other[0] : other[1], after: other[1]};
-            var row:Dynamic = core != null ? ServerStats.card(core, duo ? Class_309.PLAYLIST_RANKED2V2 : Class_309.PLAYLIST_RANKED1V1, core.var_14871) : null;
+            var row:Dynamic = core != null ? ServerStats.card(core, duo ? PlaylistType.PLAYLIST_RANKED2V2 : PlaylistType.PLAYLIST_RANKED1V1, core.var_14927) : null;
             if (row != null && Std.int(row.rating) == before && row.wins != null) {
                 change.wins = Std.int(row.wins) + (now > before ? 1 : 0);
                 change.peak = Std.int(Math.max(Std.int(row.peak), now));
@@ -146,23 +146,23 @@ class NcRanked {
     public static function scoreboard():Void {
         if (++ticks % 10 != 0) return;
         try {
-            var board:Dynamic = ScreenManager.var_6312;
-            if (board == null || !board.isActive || board.var_3172 == null) return;
+            var board:Dynamic = ScreenManager.screenScoreboard;
+            if (board == null || !board.isActive || board.mPodiums == null) return;
             var core:Dynamic = ScreenManager.owner;
-            var playlist:Dynamic = core != null && core.var_6336 != null ? core.var_6336.var_2424 : null;
-            if (playlist == null || !playlist.var_9262) return;
-            var cards:Dynamic = board.var_3172;
+            var playlist:Dynamic = core != null && core.mCustomGameData != null ? core.mCustomGameData.var_2435 : null;
+            if (playlist == null || !playlist.mbRanked) return;
+            var cards:Dynamic = board.mPodiums;
             for (i in 0...Std.int(As3.getProp(cards, "length"))) {
                 var entry:Dynamic = As3.index(cards, i);
-                var result:Dynamic = entry != null ? entry.var_1517 : null;
+                var result:Dynamic = entry != null ? entry.mPostgameData : null;
                 if (result == null) continue;
-                var id = Std.string(result.var_14871);
+                var id = Std.string(result.var_14927);
                 var before:Dynamic = Reflect.field(RatingTags.before, id);
                 if (before == null || Reflect.field(RatingTags.after, id) != null) continue;
-                var played = Std.int(result.var_3290);
-                var elo = Std.int(result.var_13090);
+                var played = Std.int(result.var_3302);
+                var elo = Std.int(result.mRating);
                 before.games = played > 0 ? played - 1 : 0;
-                if (played >= Std.int(playlist.var_7390) && elo > 0) {
+                if (played >= Std.int(playlist.mPlacementGames) && elo > 0) {
                     before.rating = elo;
                     before.stars = stars(elo);
                 }
@@ -199,13 +199,13 @@ class NcRanked {
     }
 
     static function ownCard(me:UInt):Int {
-        var board:Dynamic = ScreenManager.var_6312;
-        var cards:Dynamic = board != null ? board.var_3172 : null;
+        var board:Dynamic = ScreenManager.screenScoreboard;
+        var cards:Dynamic = board != null ? board.mPodiums : null;
         if (cards == null) return 0;
         for (i in 0...Std.int(As3.getProp(cards, "length"))) {
             var entry:Dynamic = As3.index(cards, i);
-            var result:Dynamic = entry != null ? entry.var_1517 : null;
-            if (result != null && result.var_14871 == me) return Std.int(result.var_13090);
+            var result:Dynamic = entry != null ? entry.mPostgameData : null;
+            if (result != null && result.var_14927 == me) return Std.int(result.mRating);
         }
         return 0;
     }
@@ -215,13 +215,13 @@ class NcRanked {
         return n == null ? -1 : Std.int(n);
     }
 
-    static function legendStats(core:Dynamic, p:Class_276):Dynamic {
-        if (p.var_2872 == null) return null;
-        var id = Std.int(p.var_2872.var_12011) & 0xFFFF;
+    static function legendStats(core:Dynamic, p:MatchPreviewPlayer):Dynamic {
+        if (p.var_2885 == null) return null;
+        var id = Std.int(p.var_2885.var_12053) & 0xFFFF;
         if (id <= 0) return null;
-        var table:Dynamic = core.var_12884;
+        var table:Dynamic = core.mHeroRatingHash;
         var s:Dynamic = table != null && id < Std.int(As3.getProp(table, "length")) ? As3.index(table, id) : null;
-        return s == null ? {id: id} : {id: id, rating: Std.int(s.var_13090), wins: Std.int(s.var_15173), games: Std.int(s.var_4768)};
+        return s == null ? {id: id} : {id: id, rating: Std.int(s.mRating), wins: Std.int(s.var_15231), games: Std.int(s.mGames)};
     }
 
     static function historyFile():String {

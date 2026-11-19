@@ -68,28 +68,28 @@ ENGINE_PATCHES = [
      "\t\t\t\t\tif (name.toLowerCase() == \"location\") redirect = http.responseHeaders.get(name);\n"),
 ]
 
-PREVIEW_START = "      public function method_1738():Void\n      {\n"
+PREVIEW_START = "      public function UpdatePlayerPreviews():Void\n      {\n"
 CLEAR_START = "      override public function OnClearScreen():Void\n      {\n"
-STATS_WRITE = ("      public function method_6530(param1:Dynamic, param2:String, param3:String = null, param4:Bool = false):Void\n"
+STATS_WRITE = ("      public function method_6586(param1:Dynamic, param2:String, param3:String = null, param4:Bool = false):Void\n"
                "      {\n")
 
 GAME_PATCHES = [
     ("HttpCall.hx",
-     "var_4812(var_12407.data,var_14549);",
-     "var_4812(port.runtime.AirCoerce.forCallee(var_4812, 0, var_12407.data),var_14549);"),
-    ("ScreenMatchPreviewRanked1v1.hx", PREVIEW_START, PREVIEW_START + "         port.runtime.NcRanked.preview(this, owner, var_8008, 1);\n"),
+     "var_4823(var_12447.data,var_14604);",
+     "var_4823(port.runtime.AirCoerce.forCallee(var_4823, 0, var_12447.data),var_14604);"),
+    ("ScreenMatchPreviewRanked1v1.hx", PREVIEW_START, PREVIEW_START + "         port.runtime.NcRanked.preview(this, owner, mMatchPreviewCard, 1);\n"),
     ("ScreenMatchPreviewRanked1v1.hx", CLEAR_START, CLEAR_START + "         port.runtime.NcRanked.clear();\n"),
-    ("ScreenMatchPreviewRanked2v2.hx", PREVIEW_START, PREVIEW_START + "         port.runtime.NcRanked.preview(this, owner, var_8008, 2);\n"),
+    ("ScreenMatchPreviewRanked2v2.hx", PREVIEW_START, PREVIEW_START + "         port.runtime.NcRanked.preview(this, owner, mMatchPreviewCard, 2);\n"),
     ("ScreenMatchPreviewRanked2v2.hx", CLEAR_START, CLEAR_START + "         port.runtime.NcRanked.clear();\n"),
-    ("Class_646.hx", "            _loc2_ = Class_55.method_791(port.runtime.As3.stringParam(param1),false);\n",
-     "            _loc2_ = Class_55.method_791(port.runtime.As3.stringParam(param1),false);\n"
+    ("SubScreenReplays.hx", "            _loc2_ = GameUtil.method_792(port.runtime.As3.stringParam(param1),false);\n",
+     "            _loc2_ = GameUtil.method_792(port.runtime.As3.stringParam(param1),false);\n"
      "            port.runtime.NcThumbs.shown(this, param1, _loc2_);\n"),
-    ("Class_437.hx", "         method_2254(Class_197.method_1562(var_7833));\n",
-     "         method_2254(Class_197.method_1562(var_7833));\n         port.runtime.NcRanked.after(_loc2_, param1);\n"),
+    ("ScreenEloChange.hx", "         SetCurrentNotch(RatingInfo.GetNotchFromIndex(mOldStarRating));\n",
+     "         SetCurrentNotch(RatingInfo.GetNotchFromIndex(mOldStarRating));\n         port.runtime.NcRanked.after(_loc2_, param1);\n"),
     ("GameApp.hx", "         port.runtime.As3.nativeWindow(_loc4_).width = param1;\n"
      "         port.runtime.As3.nativeWindow(_loc4_).height = param2;\n",
      "         port.runtime.NcWindow.resize(param1,param2);\n"),
-    ("Class_175.hx", STATS_WRITE, STATS_WRITE + "         if(!GameApp.var_7612) return;\n"),
+    ("Class_173.hx", STATS_WRITE, STATS_WRITE + "         if(!GameApp.var_7635) return;\n"),
 ]
 
 

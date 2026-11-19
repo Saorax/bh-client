@@ -12,11 +12,11 @@ class NcDiag {
         Hooks.gameStateChanging.add(function(from:UInt, to:UInt):Void {
             if (logged++ > 400) return;
             var core:Dynamic = ScreenManager.owner;
-            var flags = core != null ? Std.string(core.var_3645) : "?";
+            var flags = core != null ? Std.string(core.mGameState) : "?";
             var display:Dynamic = bh.platform.InputDisplay;
             var post:Dynamic = bh.platform.PostMatchStats;
             NcLog.say("match diag: state " + from + " -> " + to + ", flags " + flags + ", stats dumps " + dumps
-                + ", stats flag " + GameApp.var_2128 + " own " + Reflect.field(post, "ownDump") + " fresh " + Reflect.field(post, "fresh")
+                + ", stats flag " + GameApp.var_2135 + " own " + Reflect.field(post, "ownDump") + " fresh " + Reflect.field(post, "fresh")
                 + " tracking " + Reflect.field(post, "tracking") + ", input display listening " + Reflect.field(display, "listening")
                 + ", online " + NcStats.inMatch());
         });
@@ -24,7 +24,7 @@ class NcDiag {
             var code = Std.int(e.keyCode);
             if (code >= 112 && code <= 123 && keysLogged++ < 80)
                 NcLog.say("key diag: F" + (code - 111) + (e.ctrlKey ? " ctrl" : "") + (e.shiftKey ? " shift" : "") + (e.altKey ? " alt" : "")
-                    + ", training " + ((ScreenManager.owner != null && (Std.int(ScreenManager.owner.var_3645) & 32768) != 0)) + ", match "
+                    + ", training " + ((ScreenManager.owner != null && (Std.int(ScreenManager.owner.mGameState) & 32768) != 0)) + ", match "
                     + bh.platform.Platform.matchRunning);
             return false;
         });
@@ -37,7 +37,7 @@ class NcDiag {
         });
         first(Hooks.statsDumping, function(dumper:Dynamic):Bool {
             dumps++;
-            NcLog.say("match diag: the game writes its match stats, stats flag " + GameApp.var_2128);
+            NcLog.say("match diag: the game writes its match stats, stats flag " + GameApp.var_2135);
             return false;
         });
     }

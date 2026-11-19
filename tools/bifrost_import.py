@@ -129,13 +129,13 @@ PATCHES = [
     ("OptionsScreen", ("span", "      private function servers():Array<Dynamic>\n", "      private var typed:Dynamic = {};\n"), ""),
     ("OptionsScreen", ("span", '            ["UNLOCK ACHIEVEMENTS",', '         var y:Float = 10;'),
      "            ];\n"
-     "         if(ScreenManager.owner.var_3865 != 0)\n"
+     "         if(ScreenManager.owner.var_3878 != 0)\n"
      "         {\n"
      '            entries.push(["ACCOUNT LINKING","Link this account to your Ubisoft account and your other platforms, '
      "the game's own Account Linking screen.\",function():Void\n"
      "            {\n"
      "               close();\n"
-     "               ScreenManager.var_2627.Display();\n"
+     "               ScreenManager.var_2638.Display();\n"
      "            }]);\n"
      "         }\n"),
     ("LobbySettingsScreen", '["GAME RULES","LOBBY","PRESETS","NETWORK"]', '["GAME RULES","LOBBY","PRESETS"]'),
@@ -144,9 +144,9 @@ PATCHES = [
     ("LobbySettingsScreen", ("span", "      private static final DELAYS:Array<Dynamic>",
                              "      private function stepper(act:Dynamic, dir:Int):Dynamic"), ""),
     ("Ranks", "         if(rating < 0 || rating >= port.runtime.As3.toInt(VALHALLAN_AT))\n", "         if(rating < 0)\n"),
-    ("Ranks", "return stars == 0 ? 0 : 6 - port.runtime.As3.toInt(Class_197.method_1562(stars));",
+    ("Ranks", "return stars == 0 ? 0 : 6 - port.runtime.As3.toInt(RatingInfo.GetNotchFromIndex(stars));",
      "return port.runtime.NcTiers.division(stars);"),
-    ("RatingTags", ("span", "         try\n         {\n            return Std.string(Class_197.method_7470(stars)).toUpperCase()",
+    ("RatingTags", ("span", "         try\n         {\n            return Std.string(RatingInfo.GetTierFromIndex(stars)).toUpperCase()",
                     "      private static function stage():Stage"),
      "         return port.runtime.NcTiers.label(stars);\n      }\n\n"),
     ("RatingExtras", ("span", "      public static function tierName(rating:Int):String\n", "      private static function winRate("),

@@ -19,8 +19,8 @@ class NcThumbs {
         if (!asked.exists(wanted)) {
             asked.set(wanted, true);
             try {
-                ArchiveLoader.method_7154("LevelArt");
-                ArchiveLoader.method_21(wanted, "LevelArt");
+                ArchiveLoader.BeginStage("LevelArt");
+                ArchiveLoader.QueueFileLoad(wanted, "LevelArt");
             } catch (e:Dynamic) NcLog.say("replay thumbnail: " + e);
         }
     }
@@ -46,8 +46,8 @@ class NcThumbs {
             return;
         }
         var wanted = path;
-        if (try Class_55.method_791(wanted, true) == null catch (_:Dynamic) true) return;
+        if (try GameUtil.method_792(wanted, true) == null catch (_:Dynamic) true) return;
         path = null;
-        try screen.method_2756(wanted) catch (e:Dynamic) NcLog.say("replay thumbnail: " + e);
+        try screen.RenderLevelIcon(wanted) catch (e:Dynamic) NcLog.say("replay thumbnail: " + e);
     }
 }

@@ -469,7 +469,7 @@ class NcTrainLink {
 
     static function watchPauseMenu():Void {
         if (!menuPaused) return;
-        var menu:Dynamic = ScreenManager.var_4794;
+        var menu:Dynamic = ScreenManager.screenPause;
         if (menu != null && menu.isActive) return;
         menuPaused = false;
         if (state != "running" || !TrainingSync.usable || !TrainingSync.paused) return;
